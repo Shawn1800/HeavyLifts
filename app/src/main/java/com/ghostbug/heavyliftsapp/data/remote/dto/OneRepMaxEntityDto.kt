@@ -1,6 +1,6 @@
 package com.ghostbug.heavyliftsapp.data.remote.dto
 
-import com.ghostbug.heavyliftsapp.data.domain.OneRepMaxEntity
+import com.ghostbug.heavyliftsapp.domain.model.OneRepMaxEntity
 import kotlin.time.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

@@ -8,17 +8,17 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.launch
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.lifecycle.lifecycleScope
+import com.ghostbug.heavyLifts.BuildConfig
 
-import com.ghostbug.heavyliftsapp.ui.theme.Demo103Theme
+import com.ghostbug.heavyliftsapp.presentation.ui.theme.Demo103Theme
 
 import io.github.jan.supabase.auth.Auth
 
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
-import com.ghostbug.heavyLifts.BuildConfig
 
-import com.ghostbug.heavyliftsapp.navigation.MainNavigation
+
+import com.ghostbug.heavyliftsapp.presentation.navigation.MainNavigation
 import kotlinx.coroutines.launch
 
 

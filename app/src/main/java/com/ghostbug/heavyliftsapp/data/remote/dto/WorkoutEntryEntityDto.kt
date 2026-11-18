@@ -1,10 +1,9 @@
 package com.ghostbug.heavyliftsapp.data.remote.dto
 
-import com.ghostbug.heavyliftsapp.data.domain.WorkoutEntryEntity
+import com.ghostbug.heavyliftsapp.domain.model.WorkoutEntryEntity
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-import java.time.OffsetDateTime
 import kotlin.time.Instant
 
 @Serializable

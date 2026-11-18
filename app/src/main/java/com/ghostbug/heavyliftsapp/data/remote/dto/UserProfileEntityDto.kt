@@ -1,10 +1,10 @@
 package com.ghostbug.heavyliftsapp.data.remote.dto
 
-import com.ghostbug.heavyliftsapp.data.domain.UserProfileEntity
+import com.ghostbug.heavyliftsapp.domain.model.UserProfileEntity
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant
-import com.ghostbug.heavyliftsapp.data.domain.Gender
+import com.ghostbug.heavyliftsapp.domain.model.Gender
 
 @Serializable
 data class UserProfileEntityDto(

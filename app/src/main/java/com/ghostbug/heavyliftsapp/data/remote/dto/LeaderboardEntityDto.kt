@@ -1,6 +1,6 @@
 package com.ghostbug.heavyliftsapp.data.remote.dto
 
-import com.ghostbug.heavyliftsapp.data.domain.LeaderboardEntity
+import com.ghostbug.heavyliftsapp.domain.model.LeaderboardEntity
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant

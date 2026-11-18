@@ -8,7 +8,6 @@ plugins {
     id("com.google.gms.google-services")
     kotlin("plugin.serialization") version "2.3.10"
 
-
 }
 
 // Load properties from local.properties or gradle.properties
@@ -40,12 +39,11 @@ extensions.configure<ApplicationExtension>  {
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"$supabaseKey\"")
         buildConfigField("String", "GOOGLE_CLIENT_ID", "\"$googleClientId\"")
 
-
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = true
+            isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -92,33 +90,23 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material:material-icons-extended:1.7.8")
     implementation("androidx.compose.ui:ui-text-google-fonts")
-
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     implementation(libs.androidx.material3.adaptive.navigation3)
     implementation(libs.kotlinx.serialization.core)
-
     implementation("com.google.android.gms:play-services-auth:21.5.1")
     implementation("androidx.credentials:credentials:1.6.0-rc02")
     implementation("androidx.credentials:credentials-play-services-auth:1.6.0-rc02")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.2.0")
-
     implementation(platform("io.github.jan-tennert.supabase:bom:3.4.1"))
     implementation("io.github.jan-tennert.supabase:postgrest-kt")
     implementation("io.github.jan-tennert.supabase:auth-kt")
-
     implementation("io.ktor:ktor-client-android:3.4.1")
     debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
-
-
-        implementation("io.coil-kt:coil-compose:2.6.0")
-
+    implementation("io.coil-kt:coil-compose:2.6.0")
     implementation("androidx.core:core-splashscreen:1.0.1")
-    implementation("androidx.health.connect:connect-client:1.2.0-alpha03")
-
-    implementation("com.google.android.gms:play-services-fitness:21.2.0")
     implementation("androidx.work:work-runtime-ktx:2.11.2")
     implementation("androidx.compose.ui:ui-text-google-fonts:1.6.0")
 

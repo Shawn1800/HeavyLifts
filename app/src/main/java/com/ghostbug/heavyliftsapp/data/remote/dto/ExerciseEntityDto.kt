@@ -1,6 +1,6 @@
 package com.ghostbug.heavyliftsapp.data.remote.dto
 
-import com.ghostbug.heavyliftsapp.data.domain.ExerciseEntity
+import com.ghostbug.heavyliftsapp.domain.model.ExerciseEntity
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

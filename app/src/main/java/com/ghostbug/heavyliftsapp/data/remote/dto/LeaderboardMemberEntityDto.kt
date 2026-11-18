@@ -4,7 +4,7 @@ package com.ghostbug.heavyliftsapp.data.remote.dto
 import kotlinx.serialization.Serializable
 import kotlin.String
 import kotlin.time.Instant
-import com.ghostbug.heavyliftsapp.data.domain.LeaderboardMemberEntity
+import com.ghostbug.heavyliftsapp.domain.model.LeaderboardMemberEntity
 import kotlinx.serialization.SerialName
 
 @Serializable
