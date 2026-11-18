@@ -55,7 +55,7 @@ class MainActivity : ComponentActivity() {
 
     private fun handleAuthLink(intent: Intent?) {
         val data = intent?.data
-        if (data != null && data.scheme == "heavylifts") {
+        if (data != null && data.scheme == "heavylifts ") {
             // This tells Supabase to process the session from the URL
             // and allows the user to update their password
             onResetPasswordLinkReceived?.invoke()
