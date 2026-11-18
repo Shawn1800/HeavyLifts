@@ -1,54 +1,46 @@
 package com.ghostbug.heavyliftsapp.presentation.ui.theme
 
 import androidx.compose.ui.graphics.Color
-
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.googlefonts.GoogleFont
 import androidx.compose.ui.text.googlefonts.Font
+import androidx.compose.ui.text.googlefonts.GoogleFont
 import com.ghostbug.heavyLifts.R
 
 object HeavyLiftsColors {
-    val Olive900 = Color(0xFF2F2E25)
-    val Olive800 = Color(0xFF32312D)
-    val Olive700 = Color(0xFF2B2A27)
-    val Olive600 = Color(0xFF3A3934)
-    val Olive500 = Color(0xFF6F6C5D)
-    val Olive400 = Color(0xFF8A8676)
-    val Olive300 = Color(0xFFA8A494)
+    val White = Color(0xFFFFFFFF)
+    val Navy = Color(0xFF0F1E33)
+    val NavyStrong = Color(0xFF002B52)
+    val TextSecondary = Color(0xFF41546E)
+    val TextMuted = Color(0xFF4F6380)
+    val Outline = Color(0xFF7C93B0)
 
-    val Cream50  = Color(0xFFFDFAF2)
-    val Cream100 = Color(0xFFF4EFE2)
-    val Cream200 = Color(0xFFE5DFCF)
-    val Cream300 = Color(0xFFCFC9B7)
-    val Cream400 = Color(0xFFA8A494)
+    val Bg = White
+    val BgElevated = Color(0xFFE2EDFA)
+    val BgOverlay = Color(0xFFEEF4FC)
+    val BgChip = Color(0xFFD3E3F7)
+    val NavBackground = BgOverlay
 
-    val Orange500 = Color(0xFFE07A5F)
-    val Orange600 = Color(0xFFE07720)
-    val Orange700 = Color(0xFFB85C12)
-    val OrangeSoft = Color(0x29F38C39)
+    val Fg1 = Navy
+    val Fg2 = TextSecondary
+    val Fg3 = TextMuted
+    val Fg4 = Outline
 
-    val Blue500  = Color(0xFF659DD0)
-    val Green500 = Color(0xFF91B566)
-    val Red500   = Color(0xFFE05B4A)
+    val Accent = Color(0xFF5AB0FF)
+    val AccentStrong = Color(0xFF1F6FEB)
+    val AccentSoft = Color(0xFFC5E0FF)
+    val AccentMuted = Color(0xFFA8D2FF)
+    val Success = Color(0xFF2E7D32)
+    val Info = AccentStrong
+    val Danger = Color(0xFFB3261E)
+    val DangerSoft = Color(0xFFFFD9DE)
 
-    val Bg            = Olive700
-    val BgElevated    = Olive600
-    val BgOverlay     = Olive800
-    val BgChip        = Olive500
-    val Fg1           = Cream50
-    val Fg2           = Cream100
-    val Fg3           = Cream300
-    val Fg4           = Cream400
-    val Accent        = Orange500
-    val AccentSoft    = OrangeSoft
-    val Success       = Green500
-    val Info          = Blue500
-    val Danger        = Red500
-    val BorderSubtle  = Color(0x14FDFAF2)
-    val BorderDefault = Color(0x24FDFAF2)
-    val BorderStrong  = Color(0x3DFDFAF2)
-    val Scrim         = Color(0x8C161510)
+    val Green500 = Success
+    val Red500 = Danger
+    val BorderSubtle = BgChip
+    val BorderDefault = Outline
+    val BorderStrong = TextSecondary
+    val Scrim = Color(0x660F1E33)
 }
 
 private val fontProvider = GoogleFont.Provider(
@@ -57,15 +49,21 @@ private val fontProvider = GoogleFont.Provider(
     certificates = R.array.com_google_android_gms_fonts_certs
 )
 
-private val fredoka = GoogleFont("Fredoka")
+private val bricolageGrotesque = GoogleFont("Bricolage Grotesque")
+private val dmSans = GoogleFont("DM Sans")
 
 object HeavyLiftsType {
     val Display = FontFamily(
-        Font(googleFont = fredoka, fontProvider = fontProvider, weight = FontWeight.Normal),
-        Font(googleFont = fredoka, fontProvider = fontProvider, weight = FontWeight.SemiBold),
-        Font(googleFont = fredoka, fontProvider = fontProvider, weight = FontWeight.Bold),
+        Font(googleFont = bricolageGrotesque, fontProvider = fontProvider, weight = FontWeight.Medium),
+        Font(googleFont = bricolageGrotesque, fontProvider = fontProvider, weight = FontWeight.SemiBold),
+        Font(googleFont = bricolageGrotesque, fontProvider = fontProvider, weight = FontWeight.Bold),
+        Font(googleFont = bricolageGrotesque, fontProvider = fontProvider, weight = FontWeight.ExtraBold),
     )
 
-    // Keep the existing Body name for callers, but render everything in Fredoka.
-    val Body = Display
+    val Body = FontFamily(
+        Font(googleFont = dmSans, fontProvider = fontProvider, weight = FontWeight.Normal),
+        Font(googleFont = dmSans, fontProvider = fontProvider, weight = FontWeight.Medium),
+        Font(googleFont = dmSans, fontProvider = fontProvider, weight = FontWeight.SemiBold),
+        Font(googleFont = dmSans, fontProvider = fontProvider, weight = FontWeight.Bold),
+    )
 }

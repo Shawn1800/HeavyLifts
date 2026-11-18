@@ -1,122 +1,81 @@
 package com.ghostbug.heavyliftsapp.presentation.ui.theme
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
-import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.RoundedCornerShape
 
-private val HeavyLiftsColorScheme = darkColorScheme(
-    primary           = HeavyLiftsColors.Accent,
-    onPrimary         = HeavyLiftsColors.Fg1,
-    primaryContainer  = HeavyLiftsColors.AccentSoft,
-    onPrimaryContainer = HeavyLiftsColors.Accent,
-    secondary         = HeavyLiftsColors.BgChip,
-    onSecondary       = HeavyLiftsColors.Fg1,
-    tertiary          = HeavyLiftsColors.Info,
-    onTertiary        = HeavyLiftsColors.Fg1,
-    background        = HeavyLiftsColors.Bg,
-    onBackground      = HeavyLiftsColors.Fg1,
-    surface           = HeavyLiftsColors.BgElevated,
-    onSurface         = HeavyLiftsColors.Fg1,
-    surfaceVariant    = HeavyLiftsColors.BgChip,
-    onSurfaceVariant  = HeavyLiftsColors.Fg2,
-    error             = HeavyLiftsColors.Danger,
-    onError           = HeavyLiftsColors.Fg1,
-    outline           = HeavyLiftsColors.BorderDefault,
-    outlineVariant    = HeavyLiftsColors.BorderSubtle
+private val HeavyLiftsColorScheme = lightColorScheme(
+    primary = HeavyLiftsColors.Accent,
+    onPrimary = HeavyLiftsColors.NavyStrong,
+    primaryContainer = HeavyLiftsColors.AccentSoft,
+    onPrimaryContainer = HeavyLiftsColors.NavyStrong,
+    secondary = HeavyLiftsColors.BgChip,
+    onSecondary = HeavyLiftsColors.Navy,
+    tertiary = HeavyLiftsColors.AccentStrong,
+    onTertiary = HeavyLiftsColors.White,
+    background = HeavyLiftsColors.Bg,
+    onBackground = HeavyLiftsColors.Fg1,
+    surface = HeavyLiftsColors.White,
+    onSurface = HeavyLiftsColors.Fg1,
+    surfaceVariant = HeavyLiftsColors.BgElevated,
+    onSurfaceVariant = HeavyLiftsColors.Fg2,
+    error = HeavyLiftsColors.Danger,
+    onError = HeavyLiftsColors.White,
+    errorContainer = HeavyLiftsColors.DangerSoft,
+    onErrorContainer = HeavyLiftsColors.Danger,
+    outline = HeavyLiftsColors.BorderDefault,
+    outlineVariant = HeavyLiftsColors.BorderSubtle,
+    scrim = HeavyLiftsColors.Scrim
+)
+
+private fun typeStyle(
+    family: FontFamily,
+    weight: FontWeight,
+    size: Int,
+    lineHeight: Int,
+    color: androidx.compose.ui.graphics.Color,
+    letterSpacing: Float = 0f
+) = TextStyle(
+    fontFamily = family,
+    fontWeight = weight,
+    fontSize = size.sp,
+    lineHeight = lineHeight.sp,
+    color = color,
+    letterSpacing = letterSpacing.sp
 )
 
 private val HeavyLiftsTypography = Typography(
-    displayLarge = TextStyle(
-        fontFamily = HeavyLiftsType.Display,
-        fontWeight = FontWeight.Bold,
-        fontSize = 44.sp,
-        lineHeight = 48.sp,
-        letterSpacing = (-0.5).sp,
-        color = HeavyLiftsColors.Fg1
-    ),
-    headlineLarge = TextStyle(
-        fontFamily = HeavyLiftsType.Display,
-        fontWeight = FontWeight.Bold,
-        fontSize = 32.sp,
-        lineHeight = 36.sp,
-        letterSpacing = (-0.25).sp,
-        color = HeavyLiftsColors.Fg1
-    ),
-    headlineMedium = TextStyle(
-        fontFamily = HeavyLiftsType.Display,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 24.sp,
-        lineHeight = 30.sp,
-        color = HeavyLiftsColors.Fg1
-    ),
-    headlineSmall = TextStyle(
-        fontFamily = HeavyLiftsType.Display,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 20.sp,
-        lineHeight = 26.sp,
-        color = HeavyLiftsColors.Fg1
-    ),
-    titleLarge = TextStyle(
-        fontFamily = HeavyLiftsType.Display,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 18.sp,
-        lineHeight = 24.sp,
-        color = HeavyLiftsColors.Fg1
-    ),
-    titleMedium = TextStyle(
-        fontFamily = HeavyLiftsType.Display,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 16.sp,
-        lineHeight = 22.sp,
-        color = HeavyLiftsColors.Fg1
-    ),
-    bodyLarge = TextStyle(
-        fontFamily = HeavyLiftsType.Body,
-        fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        lineHeight = 23.sp,
-        color = HeavyLiftsColors.Fg2
-    ),
-    bodyMedium = TextStyle(
-        fontFamily = HeavyLiftsType.Body,
-        fontWeight = FontWeight.Normal,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        color = HeavyLiftsColors.Fg2
-    ),
-    bodySmall = TextStyle(
-        fontFamily = HeavyLiftsType.Body,
-        fontWeight = FontWeight.Normal,
-        fontSize = 12.sp,
-        lineHeight = 18.sp,
-        color = HeavyLiftsColors.Fg3
-    ),
-    labelLarge = TextStyle(
-        fontFamily = HeavyLiftsType.Display,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 15.sp,
-        lineHeight = 20.sp,
-        color = HeavyLiftsColors.Fg1
-    ),
-    labelMedium = TextStyle(
-        fontFamily = HeavyLiftsType.Body,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 13.sp,
-        lineHeight = 18.sp,
-        color = HeavyLiftsColors.Fg2
-    ),
-    labelSmall = TextStyle(
-        fontFamily = HeavyLiftsType.Display,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 11.sp,
-        lineHeight = 14.sp,
-        letterSpacing = 0.8.sp,
-        color = HeavyLiftsColors.Fg3
-    )
+    displayLarge = typeStyle(HeavyLiftsType.Display, FontWeight.ExtraBold, 56, 60, HeavyLiftsColors.Fg1, -1f),
+    displayMedium = typeStyle(HeavyLiftsType.Display, FontWeight.Bold, 48, 54, HeavyLiftsColors.Fg1, -0.5f),
+    displaySmall = typeStyle(HeavyLiftsType.Display, FontWeight.Bold, 40, 46, HeavyLiftsColors.Fg1),
+    headlineLarge = typeStyle(HeavyLiftsType.Display, FontWeight.Bold, 32, 38, HeavyLiftsColors.Fg1),
+    headlineMedium = typeStyle(HeavyLiftsType.Display, FontWeight.SemiBold, 28, 34, HeavyLiftsColors.Fg1),
+    headlineSmall = typeStyle(HeavyLiftsType.Display, FontWeight.SemiBold, 24, 30, HeavyLiftsColors.Fg1),
+    titleLarge = typeStyle(HeavyLiftsType.Display, FontWeight.SemiBold, 22, 28, HeavyLiftsColors.Fg1),
+    titleMedium = typeStyle(HeavyLiftsType.Display, FontWeight.SemiBold, 18, 24, HeavyLiftsColors.Fg1),
+    titleSmall = typeStyle(HeavyLiftsType.Display, FontWeight.SemiBold, 16, 22, HeavyLiftsColors.Fg1),
+    bodyLarge = typeStyle(HeavyLiftsType.Body, FontWeight.Normal, 16, 24, HeavyLiftsColors.Fg2),
+    bodyMedium = typeStyle(HeavyLiftsType.Body, FontWeight.Normal, 14, 20, HeavyLiftsColors.Fg2),
+    bodySmall = typeStyle(HeavyLiftsType.Body, FontWeight.Normal, 12, 18, HeavyLiftsColors.Fg3),
+    labelLarge = typeStyle(HeavyLiftsType.Display, FontWeight.SemiBold, 16, 22, HeavyLiftsColors.Fg1),
+    labelMedium = typeStyle(HeavyLiftsType.Body, FontWeight.SemiBold, 14, 20, HeavyLiftsColors.Fg2),
+    labelSmall = typeStyle(HeavyLiftsType.Display, FontWeight.SemiBold, 12, 16, HeavyLiftsColors.Fg3, 0.3f)
+)
+
+private val HeavyLiftsShapes = Shapes(
+    extraSmall = RoundedCornerShape(12.dp),
+    small = RoundedCornerShape(16.dp),
+    medium = RoundedCornerShape(22.dp),
+    large = RoundedCornerShape(28.dp),
+    extraLarge = RoundedCornerShape(32.dp)
 )
 
 @Composable
@@ -124,6 +83,7 @@ fun Demo103Theme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = HeavyLiftsColorScheme,
         typography = HeavyLiftsTypography,
+        shapes = HeavyLiftsShapes,
         content = content
     )
 }

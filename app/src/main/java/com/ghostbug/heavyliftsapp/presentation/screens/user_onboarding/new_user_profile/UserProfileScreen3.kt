@@ -66,7 +66,6 @@ fun UserProfileScreen3(
         modifier = Modifier
             .fillMaxSize()
             .background(HeavyLiftsColors.Bg)
-            .dotMatrix()
     ) {
         SnackbarHost(
             hostState = snackbarHostState,

@@ -10,7 +10,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,19 +21,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,6 +41,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ghostbug.heavyliftsapp.presentation.screens.signup.SignUpEvent
 import com.ghostbug.heavyliftsapp.presentation.screens.signup.SignUpUiEvent
 import com.ghostbug.heavyliftsapp.presentation.screens.signup.SignUpViewModel
+import com.ghostbug.heavyliftsapp.presentation.ui.components.SetNumberBadge
 import com.ghostbug.heavyliftsapp.presentation.ui.theme.HeavyLiftsColors
 import com.ghostbug.heavyliftsapp.presentation.ui.theme.HeavyLiftsType
 import kotlinx.coroutines.launch
@@ -151,12 +147,7 @@ private fun HomeContent(
     ) {
         HeavyHeader(monthName = currentMonthName, year = currentYear)
 
-        HorizontalDivider(
-            color = HeavyLiftsColors.BorderSubtle,
-            thickness = 0.5.dp
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         WeeklyCalendar(
             pagerState = pagerState,
@@ -164,35 +155,34 @@ private fun HomeContent(
             onDateSelected = onDateSelected
         )
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(30.dp))
 
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             Column(modifier = Modifier.fillMaxSize()) {
-                Spacer(modifier = Modifier.height(8.dp))
-
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
+                        .padding(horizontal = 24.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(6.dp)
-                            .background(HeavyLiftsColors.Accent, CircleShape)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "SESSIONS",
-                        color = HeavyLiftsColors.Fg3,
-                        fontFamily = HeavyLiftsType.Display,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 1.5.sp
+                        text = "Sessions",
+                        color = HeavyLiftsColors.Fg1,
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = if (today == state.selectedDate) {
+                            "${state.workouts.size} today"
+                        } else {
+                            "${state.workouts.size} sessions"
+                        },
+                        color = HeavyLiftsColors.Fg2,
+                        style = MaterialTheme.typography.labelLarge
                     )
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Box(modifier = Modifier.weight(1f)) {
                     when {
@@ -238,24 +228,26 @@ private fun HeavyHeader(monthName: String, year: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 16.dp),
+            .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 4.dp),
     ) {
         Text(
             text = year,
-            color = HeavyLiftsColors.Fg3,
-            fontFamily = HeavyLiftsType.Display,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 1.sp
+            color = HeavyLiftsColors.Fg2,
+            fontFamily = HeavyLiftsType.Body,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 2.sp
         )
         Text(
             text = monthName,
             color = HeavyLiftsColors.Fg1,
             fontFamily = HeavyLiftsType.Display,
-            fontWeight = FontWeight.Bold,
-            fontSize = 34.sp,
-            letterSpacing = (-0.5).sp,
-            lineHeight = 36.sp
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 58.sp,
+            letterSpacing = (-1).sp,
+            lineHeight = 64.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -355,13 +347,14 @@ private fun WeekRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp),
+            .padding(horizontal = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         for (i in 0..6) {
             val date = startDate.plus(i, DateTimeUnit.DAY)
+            val isSelected = date == selectedDate
             HeavyDateItem(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(if (isSelected) 1.7f else 1f),
                 date = date,
                 isToday = date == today,
                 isSelected = date == selectedDate,
@@ -387,8 +380,8 @@ private fun HeavyDateItem(
     val bgColor by animateColorAsState(
         targetValue = when {
             isSelected -> HeavyLiftsColors.Accent
-            isToday    -> HeavyLiftsColors.BgElevated
-            else       -> HeavyLiftsColors.BgElevated
+            isFuture -> HeavyLiftsColors.BgOverlay
+            else -> HeavyLiftsColors.BgElevated
         },
         animationSpec = tween(150),
         label = "dateColor"
@@ -396,61 +389,34 @@ private fun HeavyDateItem(
 
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
-            .alpha(if (isFuture) 0.25f else 1f)
+            .height(if (isSelected) 104.dp else 88.dp)
+            .clip(RoundedCornerShape(if (isSelected) 32.dp else 24.dp))
             .clickable(
                 enabled = !isFuture,
-//                interactionSource = remember { MutableInteractionSource() },
-//                indication = null
+                role = androidx.compose.ui.semantics.Role.Button
+            ) { onDateSelected(date) }
+            .background(bgColor),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                text = dayName,
+                color = if (isSelected) HeavyLiftsColors.NavyStrong else HeavyLiftsColors.Fg2,
+                fontFamily = HeavyLiftsType.Body,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.4.sp
             )
-                { onDateSelected(date) }
-                    .then(
-                        if (isSelected) Modifier.drawBehind {
-                            drawRoundRect(
-                                color = Color(0x38000000),
-                                topLeft = Offset(0f, 6.dp.toPx()),
-                                size = size,
-                                cornerRadius = CornerRadius(20.dp.toPx())
-                            )
-                        } else Modifier
-                    )
-                    .heightIn(min = 68.dp)
-                    .background(bgColor, RoundedCornerShape(20.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                    modifier = Modifier.padding(vertical = 10.dp)
-                ) {
-                    Text(
-                        text = dayName,
-                        color = if (isSelected) HeavyLiftsColors.Fg1.copy(alpha = 0.85f) else HeavyLiftsColors.Fg3,
-                        fontFamily = HeavyLiftsType.Display,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 0.5.sp
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = dayNumber,
-                        color = when {
-                            isSelected -> HeavyLiftsColors.Fg1
-                            isToday -> HeavyLiftsColors.Fg1
-                            else -> HeavyLiftsColors.Fg2
-                        },
-                        fontFamily = HeavyLiftsType.Display,
-                        fontWeight = if (isSelected || isToday) FontWeight.Bold else FontWeight.SemiBold,
-                        fontSize = 18.sp
-                    )
-                    if (isToday && !isSelected) {
-                        Box(
-                            modifier = Modifier
-                                .background(HeavyLiftsColors.Accent, CircleShape)
-                        )
-                    }
-                }
-            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = dayNumber,
+                color = if (isSelected || isToday) HeavyLiftsColors.NavyStrong else HeavyLiftsColors.Fg2,
+                fontFamily = HeavyLiftsType.Display,
+                fontWeight = FontWeight.Bold,
+                fontSize = if (isSelected) 26.sp else 19.sp
+            )
+        }
+    }
 }
 
 // ─── FAB ─────────────────────────────────────────────────────────────────────
@@ -459,23 +425,26 @@ private fun HeavyDateItem(
 private fun HeavyFab(onClick: () -> Unit, state: HomeState) {
     val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
     val isToday = today == state.selectedDate
-    FloatingActionButton(
+    ExtendedFloatingActionButton(
         onClick = onClick,
+        icon = {
+            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(28.dp))
+        },
+        text = {
+            Text(
+                text = "Log session",
+                fontFamily = HeavyLiftsType.Body,
+                fontWeight = FontWeight.Bold
+            )
+        },
         containerColor = if (isToday) HeavyLiftsColors.Accent else HeavyLiftsColors.BgChip,
-        contentColor = HeavyLiftsColors.Fg1,
-        shape = CircleShape,
+        contentColor = HeavyLiftsColors.NavyStrong,
+        shape = RoundedCornerShape(28.dp),
         elevation = FloatingActionButtonDefaults.elevation(
             defaultElevation = 0.dp,
             pressedElevation = 0.dp
         )
-    ) {
-        Icon(
-            imageVector = Icons.Default.Add,
-            contentDescription = "Add Workout",
-            tint = HeavyLiftsColors.Fg1,
-            modifier = Modifier.size(24.dp)
-        )
-    }
+    )
 }
 
 // ─── Workout List ─────────────────────────────────────────────────────────────
@@ -497,14 +466,13 @@ fun WorkoutList(
         state = listState,
         modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 104.dp)
     ) {
         items(
             items = workouts,
             key = { it.exercise.id }
         ) { workout ->
             HeavyWorkoutCard(
-                state = state,
                 workout = workout,
                 onAddSetClick = if (today == state.selectedDate) {
                     { onEvent(HomeEvent.EditWorkout(workout.exercise.id)) }
@@ -521,109 +489,103 @@ fun WorkoutList(
 @Composable
 private fun HeavyWorkoutCard(
     workout: GroupedWorkout,
-    state: HomeState,
     onAddSetClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var expanded by rememberSaveable { mutableStateOf(false) }
-
+    var expanded by rememberSaveable { mutableStateOf(true) }
     val chevronRotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
         animationSpec = tween(200),
-        label = "chevron"
+        label = "workoutCardChevron"
     )
 
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(20.dp)) // 👈 important
             .fillMaxWidth()
-            .background(
-                if (expanded) HeavyLiftsColors.BgElevated else HeavyLiftsColors.BgElevated,
-                RoundedCornerShape(20.dp)
-            )
-            .clickable {
-                expanded = !expanded
-
-            }
+            .clip(RoundedCornerShape(30.dp))
+            .background(HeavyLiftsColors.BgElevated)
     ) {
-        // ── Card header ───────────────────────────────────────────────────
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .clickable { expanded = !expanded }
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .background(HeavyLiftsColors.AccentMuted, RoundedCornerShape(22.dp)),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .width(4.dp)
-                        .height(36.dp)
-                        .background(
-                            if (expanded) HeavyLiftsColors.Accent else HeavyLiftsColors.BgChip,
-                            RoundedCornerShape(2.dp)
-                        )
+                Icon(
+                    imageVector = Icons.Default.FitnessCenter,
+                    contentDescription = null,
+                    tint = HeavyLiftsColors.NavyStrong,
+                    modifier = Modifier.size(26.dp)
                 )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = workout.exercise.exerciseName,
-                        color = HeavyLiftsColors.Fg1,
-                        fontFamily = HeavyLiftsType.Display,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = workout.exercise.category,
-                        color = HeavyLiftsColors.Fg3,
-                        fontFamily = HeavyLiftsType.Body,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Normal,
-                        letterSpacing = 0.5.sp
-                    )
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = workout.exercise.exerciseName,
+                    color = HeavyLiftsColors.Fg1,
+                    fontFamily = HeavyLiftsType.Display,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Surface(
+                        color = HeavyLiftsColors.BgChip,
+                        shape = CircleShape
+                    ) {
+                        Text(
+                            text = workout.exercise.category,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                            color = HeavyLiftsColors.NavyStrong,
+                            fontFamily = HeavyLiftsType.Body,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1
+                        )
+                    }
+                    workout.changePercent?.let { percent ->
+                        val label = (if (percent >= 0) "+" else "") + "%.0f%%".format(percent)
+                        Surface(color = HeavyLiftsColors.AccentStrong, shape = CircleShape) {
+                            Text(
+                                text = label,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                                color = HeavyLiftsColors.White,
+                                fontFamily = HeavyLiftsType.Body,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
             }
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(HeavyLiftsColors.AccentSoft, CircleShape),
+                contentAlignment = Alignment.Center
             ) {
-                workout.changePercent?.let { percent ->
-                    val isPositive = percent >= 0
-                    Text(
-                        text = (if (isPositive) "+" else "") + "%.0f%%".format(percent),
-                        color = if (isPositive) HeavyLiftsColors.Green500 else HeavyLiftsColors.Red500,
-                        fontFamily = HeavyLiftsType.Display,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.sp
-                    )
-                }
-                Text(
-                    text = "${workout.sets.size}×",
-                    color = HeavyLiftsColors.Fg3,
-                    fontFamily = HeavyLiftsType.Display,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowDown,
-                    contentDescription = null,
-                    tint = HeavyLiftsColors.Fg3,
+                    contentDescription = if (expanded) "Collapse workout" else "Expand workout",
+                    tint = HeavyLiftsColors.NavyStrong,
                     modifier = Modifier
-                        .size(18.dp)
+                        .size(28.dp)
                         .rotate(chevronRotation)
                 )
             }
         }
 
-        // ── Expanded content ──────────────────────────────────────────────
         AnimatedVisibility(
             visible = expanded,
             enter = expandVertically(tween(220)) + fadeIn(tween(220)),
@@ -632,135 +594,78 @@ private fun HeavyWorkoutCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        HeavyLiftsColors.BgOverlay,
-                        RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp)
-                    )
+                    .padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // Sets header row
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 32.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Set",    color = HeavyLiftsColors.Fg4, fontFamily = HeavyLiftsType.Display, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp)
-                    Text("Weight", color = HeavyLiftsColors.Fg4, fontFamily = HeavyLiftsType.Display, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp)
-                    Text("Reps",   color = HeavyLiftsColors.Fg4, fontFamily = HeavyLiftsType.Display, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp)
-                }
-
                 workout.sets.forEachIndexed { index, set ->
                     HeavySetRow(
                         setNumber = index + 1,
                         weight = set.weight,
                         reps = set.reps,
-                        isLast = index == workout.sets.lastIndex
+                        onClick = onAddSetClick
                     )
-                }
-
-                // Edit button
-                val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-                if (today == state.selectedDate) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp)
-                    ) {
-                        Button(
-                            onClick = onAddSetClick,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = HeavyLiftsColors.AccentSoft,
-                                contentColor = HeavyLiftsColors.Accent
-                            ),
-                            contentPadding = PaddingValues(vertical = 12.dp),
-                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
-                        ) {
-                            Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Edit Workout", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp)
-                    ) {
-                        Button(
-                            onClick = onAddSetClick,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = HeavyLiftsColors.BgChip,
-                                contentColor = HeavyLiftsColors.Fg3
-                            ),
-                            contentPadding = PaddingValues(vertical = 12.dp),
-                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
-                        ) {
-                            Text("Read only", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
                 }
             }
         }
     }
 }
 
-// ─── Set Row ──────────────────────────────────────────────────────────────────
-
 @Composable
 private fun HeavySetRow(
     setNumber: Int,
     weight: Float,
     reps: Int,
-    isLast: Boolean
+    onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 32.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .clip(RoundedCornerShape(24.dp))
+            .background(HeavyLiftsColors.BgOverlay)
+            .clickable(
+                role = androidx.compose.ui.semantics.Role.Button,
+                onClick = onClick
+            )
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(24.dp)
-                .background(HeavyLiftsColors.AccentSoft, RoundedCornerShape(7.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = setNumber.toString(),
-                color = HeavyLiftsColors.Accent,
-                fontFamily = HeavyLiftsType.Display,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
+        SetNumberBadge(
+            number = setNumber,
+            modifier = Modifier.size(44.dp),
+            containerColor = HeavyLiftsColors.AccentStrong
+        )
+        Spacer(modifier = Modifier.width(14.dp))
         Text(
-            text = "${weight}kg",
+            text = "SET",
+            color = HeavyLiftsColors.Fg2,
+            fontFamily = HeavyLiftsType.Body,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.5.sp
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        Text(
+            text = "%.1f".format(weight),
             color = HeavyLiftsColors.Fg1,
             fontFamily = HeavyLiftsType.Display,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Text(
-            text = "${reps} reps",
-            color = HeavyLiftsColors.Fg2,
-            fontFamily = HeavyLiftsType.Display,
-            fontSize = 14.sp,
+            fontSize = 25.sp,
             fontWeight = FontWeight.SemiBold
         )
-    }
-
-    if (!isLast) {
-        HorizontalDivider(
-            color = HeavyLiftsColors.BorderSubtle,
-            thickness = 0.5.dp,
-            modifier = Modifier.padding(horizontal = 32.dp)
+        Spacer(modifier = Modifier.width(5.dp))
+        Text(
+            text = "kg",
+            color = HeavyLiftsColors.Fg2,
+            fontFamily = HeavyLiftsType.Body,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(modifier = Modifier.width(9.dp))
+        Text(
+            text = "× ${reps}",
+            color = HeavyLiftsColors.Fg1,
+            fontFamily = HeavyLiftsType.Display,
+            fontSize = 25.sp,
+            fontWeight = FontWeight.SemiBold
         )
     }
 }
@@ -772,7 +677,7 @@ private fun HeavyLoadingIndicator() {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             CircularProgressIndicator(
-                color = HeavyLiftsColors.Accent,
+                color = HeavyLiftsColors.AccentStrong,
                 strokeWidth = 2.dp,
                 modifier = Modifier.size(32.dp)
             )
@@ -847,7 +752,7 @@ private fun HeavyEmptyState() {
                 Icon(
                     Icons.Default.Add,
                     contentDescription = null,
-                    tint = HeavyLiftsColors.Accent,
+                    tint = HeavyLiftsColors.AccentStrong,
                     modifier = Modifier.size(28.dp)
                 )
             }

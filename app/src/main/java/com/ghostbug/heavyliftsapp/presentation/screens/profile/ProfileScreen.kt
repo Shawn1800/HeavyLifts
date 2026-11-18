@@ -122,7 +122,7 @@ fun ProfileScreen(
             if (state.isLoading) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(
-                        color = HeavyLiftsColors.Accent,
+                        color = HeavyLiftsColors.AccentStrong,
                         strokeWidth = 2.dp,
                         modifier = Modifier.size(28.dp)
                     )
@@ -211,14 +211,14 @@ private fun ProfileTopBar(
                 if (isSaving) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
-                        color = HeavyLiftsColors.Accent,
+                        color = HeavyLiftsColors.AccentStrong,
                         strokeWidth = 2.dp
                     )
                 } else {
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = "Save",
-                        tint = HeavyLiftsColors.Accent,
+                        tint = HeavyLiftsColors.AccentStrong,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -330,13 +330,13 @@ private fun StatTile(
                 Icon(
                     imageVector = Icons.Default.LocalFireDepartment,
                     contentDescription = null,
-                    tint = HeavyLiftsColors.Accent,
+                    tint = HeavyLiftsColors.AccentStrong,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(Modifier.width(4.dp))
                 Text(
                     text = value,
-                    color = HeavyLiftsColors.Accent,
+                    color = HeavyLiftsColors.AccentStrong,
                     fontFamily = HeavyLiftsType.Display,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold

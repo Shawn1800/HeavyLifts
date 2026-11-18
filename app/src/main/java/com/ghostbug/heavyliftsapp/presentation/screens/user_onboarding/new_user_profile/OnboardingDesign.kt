@@ -18,8 +18,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -28,17 +26,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ghostbug.heavyliftsapp.presentation.ui.theme.HeavyLiftsColors
 import com.ghostbug.heavyliftsapp.presentation.ui.theme.HeavyLiftsType
-
-fun Modifier.dotMatrix(
-    dotColor: Color = HeavyLiftsColors.BgChip.copy(alpha = 0.14f),
-    spacing: Float = 16f,
-    radius: Float = 1.1f
-): Modifier = this.drawBehind {
-    val cols = (size.width / spacing).toInt() + 1
-    val rows = (size.height / spacing).toInt() + 1
-    for (c in 0..cols) for (r in 0..rows)
-        drawCircle(dotColor, radius, Offset(c * spacing, r * spacing))
-}
 
 @Composable
 fun OnboardingStepProgress(current: Int, total: Int = 3) {
@@ -53,8 +40,8 @@ fun OnboardingStepProgress(current: Int, total: Int = 3) {
                     .width(if (i == current) 28.dp else 8.dp)
                     .background(
                         color = when {
-                            i == current -> HeavyLiftsColors.Accent
-                            i < current  -> HeavyLiftsColors.Fg3
+                            i == current -> HeavyLiftsColors.AccentStrong
+                            i < current  -> HeavyLiftsColors.Accent
                             else         -> HeavyLiftsColors.BgChip
                         },
                         shape = RoundedCornerShape(1.dp)
@@ -80,7 +67,7 @@ fun OnboardingTextField(
         placeholder = {
             Text(
                 placeholder,
-                color = HeavyLiftsColors.BgChip,
+                color = HeavyLiftsColors.Fg3,
                 fontFamily = HeavyLiftsType.Body,
                 fontSize = 13.sp
             )
@@ -90,7 +77,7 @@ fun OnboardingTextField(
             {
                 Text(
                     it,
-                    color = HeavyLiftsColors.Accent,
+                    color = HeavyLiftsColors.Danger,
                     fontSize = 11.sp,
                     fontFamily = HeavyLiftsType.Body
                 )
@@ -107,10 +94,10 @@ fun OnboardingTextField(
         colors = OutlinedTextFieldDefaults.colors(
             focusedTextColor = HeavyLiftsColors.Fg1,
             unfocusedTextColor = HeavyLiftsColors.Fg2,
-            focusedBorderColor = HeavyLiftsColors.Fg1,
+            focusedBorderColor = HeavyLiftsColors.AccentStrong,
             unfocusedBorderColor = HeavyLiftsColors.BorderSubtle,
-            cursorColor = HeavyLiftsColors.Fg1,
-            errorBorderColor = HeavyLiftsColors.Accent,
+            cursorColor = HeavyLiftsColors.AccentStrong,
+            errorBorderColor = HeavyLiftsColors.Danger,
             focusedContainerColor = Color.Transparent,
             unfocusedContainerColor = Color.Transparent,
             errorContainerColor = Color.Transparent
@@ -126,8 +113,8 @@ fun OnboardingUnitToggle(
 ) {
     Row(
         modifier = Modifier
-            .background(HeavyLiftsColors.BgChip, RoundedCornerShape(12.dp))
-            .border(1.dp, HeavyLiftsColors.BorderSubtle, RoundedCornerShape(12.dp))
+            .background(HeavyLiftsColors.BgOverlay, RoundedCornerShape(16.dp))
+            .border(1.dp, HeavyLiftsColors.BorderSubtle, RoundedCornerShape(16.dp))
             .padding(top = 8.dp)
     ) {
         options.forEachIndexed { index, label ->
@@ -136,14 +123,15 @@ fun OnboardingUnitToggle(
                 modifier = Modifier
                     .clickable { onSelect(index) }
                     .background(
-                        if (isSelected) HeavyLiftsColors.Fg1 else Color.Transparent
+                        if (isSelected) HeavyLiftsColors.Accent else Color.Transparent,
+                        RoundedCornerShape(12.dp)
                     )
                     .padding(horizontal = 12.dp, vertical = 10.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = label,
-                    color = if (isSelected) HeavyLiftsColors.Bg else HeavyLiftsColors.Fg3,
+                    color = if (isSelected) HeavyLiftsColors.NavyStrong else HeavyLiftsColors.Fg3,
                     fontSize = 11.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                     fontFamily = HeavyLiftsType.Body

@@ -177,7 +177,7 @@ fun SignUpScreen(
                 TextButton(onClick = { onEvent(SignUpEvent.OnNavigateToSignIn) }) {
                     Text(
                         text = "Sign in",
-                        color = HeavyLiftsColors.Accent,
+                        color = HeavyLiftsColors.AccentStrong,
                         fontFamily = HeavyLiftsType.Display,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold

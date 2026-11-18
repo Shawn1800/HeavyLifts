@@ -1,7 +1,6 @@
 package com.ghostbug.heavyliftsapp.presentation.screens.log_workout
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,14 +19,19 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -41,12 +45,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -55,50 +56,36 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ghostbug.heavyliftsapp.domain.model.WorkoutEntryEntity
+import com.ghostbug.heavyliftsapp.presentation.ui.components.SetNumberBadge
 import com.ghostbug.heavyliftsapp.presentation.ui.theme.HeavyLiftsColors
 import com.ghostbug.heavyliftsapp.presentation.ui.theme.HeavyLiftsType
-
-private fun Modifier.dotMatrixBackground(
-    dotColor: Color = HeavyLiftsColors.BgChip.copy(alpha = 0.12f),
-    spacing: Float = 14f,
-    radius: Float = 1.1f
-): Modifier = this.drawBehind {
-    val cols = (size.width / spacing).toInt() + 1
-    val rows = (size.height / spacing).toInt() + 1
-    for (col in 0..cols) {
-        for (row in 0..rows) {
-            drawCircle(
-                color = dotColor,
-                radius = radius,
-                center = Offset(col * spacing, row * spacing)
-            )
-        }
-    }
-}
-
-// ─── Screen ───────────────────────────────────────────────────────────────────
+import kotlinx.coroutines.launch
 
 @Composable
 fun LogWorkoutScreen(
     exerciseId: Long,
     dateMillis: Long,
     logWorkoutViewModel: LogWorkoutViewModel = viewModel(),
-    onBack: () -> Unit,
+    onBack: () -> Unit
 ) {
     LaunchedEffect(exerciseId, dateMillis) {
-        logWorkoutViewModel.onEvent(LogWorkoutEvent.SetExerciseById(exerciseId, dateMillis = dateMillis))
+        logWorkoutViewModel.onEvent(
+            LogWorkoutEvent.SetExerciseById(exerciseId, dateMillis)
+        )
     }
 
     val state by logWorkoutViewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    // Use scope.launch so showSnackbar never blocks NavBackToHome collection
     LaunchedEffect(Unit) {
         logWorkoutViewModel.uiEvent.collect { event ->
             when (event) {
                 is LogWorkoutUiEvent.NavBackToHome -> onBack()
-                is LogWorkoutUiEvent.SendSnackbar  -> scope.launch { snackbarHostState.showSnackbar(event.message) }
+                is LogWorkoutUiEvent.SendSnackbar -> {
+                    scope.launch { snackbarHostState.showSnackbar(event.message) }
+                }
             }
         }
     }
@@ -107,25 +94,22 @@ fun LogWorkoutScreen(
         containerColor = HeavyLiftsColors.Bg,
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        NothingLogWorkoutContent(
+        LogWorkoutContent(
             state = state,
             onBack = onBack,
-            onEvent = { logWorkoutViewModel.onEvent(it) },
+            onEvent = logWorkoutViewModel::onEvent,
             modifier = Modifier.padding(paddingValues)
         )
     }
 }
 
-// ─── Content ──────────────────────────────────────────────────────────────────
-
 @Composable
-fun NothingLogWorkoutContent(
+private fun LogWorkoutContent(
     state: LogWorkoutState,
     onBack: () -> Unit,
     onEvent: (LogWorkoutEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // State lives here — no recomposition leak up to LogWorkoutScreen on every keystroke
     var currentWeight by remember { mutableStateOf("") }
     var currentReps by remember { mutableStateOf("") }
 
@@ -140,400 +124,400 @@ fun NothingLogWorkoutContent(
                 .fillMaxSize()
                 .background(HeavyLiftsColors.Bg)
                 .verticalScroll(rememberScrollState())
-                .padding(bottom = 100.dp)
+                .padding(bottom = 112.dp)
         ) {
-            // ── Top bar ───────────────────────────────────────────────
-            NothingLogTopBar(onBack = onBack)
+            LogTopBar(onBack = onBack)
 
-            // ── Exercise heading ──────────────────────────────────────
-            NothingExerciseHeading(exerciseName = state.exercise?.exerciseName ?: "")
+            ExerciseHeading(exerciseName = state.exercise?.exerciseName.orEmpty())
 
-            HorizontalDivider(color = HeavyLiftsColors.BorderSubtle, thickness = 0.5.dp)
+            SectionHeading(text = "Add set ${state.sets.size + 1}")
 
-            // ── "Add Set N" label ─────────────────────────────────────
-            NothingSetSectionLabel(
-                label = "ADD SET",
-                number = state.sets.size + 1
-            )
-
-            // ── Current unsaved set — bound to local state, no VM per keystroke ──
-            NothingSetRow(
-                setNumber = state.sets.size + 1,
-                weight = currentWeight,
-                reps = currentReps,
-                onWeightChange = { currentWeight = it },
-                onRepsChange = { currentReps = it },
-                onDeleteSet = { currentWeight = ""; currentReps = "" }
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // ── Add Set button ────────────────────────────────────────
-            NothingAddSetButton(
-                onClick = {
-                    onEvent(
-                        LogWorkoutEvent.OnAddingSets(
-                            exerciseId = state.exercise?.id ?: 0,
-                            weight = currentWeight,
-                            reps = currentReps
-                        )
-                    )
-                    currentWeight = ""
-                    currentReps = ""
-                }
-            )
-
-            // ── Logged sets ───────────────────────────────────────────
-            if (state.sets.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(24.dp))
-
-                HorizontalDivider(color = HeavyLiftsColors.BorderSubtle, thickness = 0.5.dp)
-
-                NothingSetSectionLabel(
-                    label = "LOGGED SETS",
-                    number = null,
-                    count = state.sets.size
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .clip(RoundedCornerShape(34.dp))
+                    .background(HeavyLiftsColors.BgElevated)
+                    .padding(14.dp)
+            ) {
+                SetInputRow(
+                    setNumber = state.sets.size + 1,
+                    weight = currentWeight,
+                    reps = currentReps,
+                    badgeColor = HeavyLiftsColors.AccentStrong,
+                    onWeightChange = { currentWeight = it },
+                    onRepsChange = { currentReps = it },
+                    onDelete = {
+                        currentWeight = ""
+                        currentReps = ""
+                    }
                 )
 
-                state.sets.forEach { setItem ->
-                    NothingLoggedSetRow(
-                        setItem = setItem,
-                        onDeleteSet = { onEvent(LogWorkoutEvent.DeleteSet(setItem.id)) }
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Button(
+                    onClick = {
+                        onEvent(
+                            LogWorkoutEvent.OnAddingSets(
+                                exerciseId = state.exercise?.id ?: 0,
+                                weight = currentWeight,
+                                reps = currentReps
+                            )
+                        )
+                        currentWeight = ""
+                        currentReps = ""
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = HeavyLiftsColors.AccentSoft,
+                        contentColor = HeavyLiftsColors.NavyStrong
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Add set",
+                        fontFamily = HeavyLiftsType.Body,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
                     )
-                    HorizontalDivider(
-                        color = HeavyLiftsColors.BorderSubtle,
-                        thickness = 0.5.dp,
-                        modifier = Modifier.padding(horizontal = 20.dp)
+                }
+            }
+
+            if (state.sets.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 24.dp, end = 24.dp, top = 28.dp, bottom = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Logged sets",
+                        color = HeavyLiftsColors.Fg1,
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.weight(1f)
                     )
+                    Text(
+                        text = "${state.sets.size} total",
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(HeavyLiftsColors.BgElevated)
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        color = HeavyLiftsColors.Fg2,
+                        fontFamily = HeavyLiftsType.Body,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    state.sets.forEach { set ->
+                        LoggedSetRow(
+                            set = set,
+                            onDelete = { onEvent(LogWorkoutEvent.DeleteSet(set.id)) }
+                        )
+                    }
                 }
             }
         }
 
-        // FAB lives here so it reads currentWeight/currentReps at click time only
-        NothingSaveFab(
+        ExtendedFloatingActionButton(
             onClick = { onEvent(LogWorkoutEvent.SaveWorkout(currentWeight, currentReps)) },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 16.dp, bottom = 16.dp)
+                .padding(end = 20.dp, bottom = 16.dp),
+            icon = {
+                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(24.dp))
+            },
+            text = {
+                Text(
+                    text = "Save",
+                    fontFamily = HeavyLiftsType.Body,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            containerColor = HeavyLiftsColors.Accent,
+            contentColor = HeavyLiftsColors.NavyStrong,
+            shape = RoundedCornerShape(28.dp),
+            elevation = FloatingActionButtonDefaults.elevation(
+                defaultElevation = 0.dp,
+                pressedElevation = 0.dp
+            )
         )
     }
 }
 
-// ─── Top Bar ──────────────────────────────────────────────────────────────────
-
 @Composable
-private fun NothingLogTopBar(onBack: () -> Unit) {
+private fun LogTopBar(onBack: () -> Unit) {
+    var menuExpanded by remember { mutableStateOf(false) }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 4.dp, end = 20.dp, top = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onBack) {
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier
+                .size(48.dp)
+                .background(HeavyLiftsColors.BgElevated, CircleShape)
+        ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Back",
-                tint = HeavyLiftsColors.Fg3,
-                modifier = Modifier.size(20.dp)
+                tint = HeavyLiftsColors.Navy,
+                modifier = Modifier.size(24.dp)
             )
         }
 
-        // Decorative glyph dots
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Box(Modifier.size(5.dp).background(HeavyLiftsColors.Accent, CircleShape))
-            Box(Modifier.size(4.dp).background(HeavyLiftsColors.BgChip, CircleShape))
-            Box(Modifier.size(4.dp).background(HeavyLiftsColors.BgChip, CircleShape))
+        Box {
+            IconButton(
+                onClick = { menuExpanded = true },
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(HeavyLiftsColors.BgElevated, CircleShape)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = "More options",
+                    tint = HeavyLiftsColors.Navy,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            DropdownMenu(
+                expanded = menuExpanded,
+                onDismissRequest = { menuExpanded = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Close session") },
+                    onClick = {
+                        menuExpanded = false
+                        onBack()
+                    }
+                )
+            }
         }
     }
 }
 
-// ─── Exercise Heading ─────────────────────────────────────────────────────────
-
 @Composable
-private fun NothingExerciseHeading(exerciseName: String) {
+private fun ExerciseHeading(exerciseName: String) {
     Column(
-        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 20.dp)
+        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 4.dp)
     ) {
         Text(
             text = "LOG",
-            color = HeavyLiftsColors.Fg3,
-            fontSize = 10.sp,
+            color = HeavyLiftsColors.AccentStrong,
+            fontFamily = HeavyLiftsType.Body,
+            fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
-            letterSpacing = 3.sp,
-            fontFamily = HeavyLiftsType.Display
+            letterSpacing = 2.sp
         )
         Text(
-            text = exerciseName.uppercase(),
+            text = exerciseName,
             color = HeavyLiftsColors.Fg1,
-            fontWeight = FontWeight.Black,
-            fontSize = 26.sp,
-            letterSpacing = (-0.5).sp,
-            lineHeight = 28.sp
+            fontFamily = HeavyLiftsType.Display,
+            fontWeight = FontWeight.Bold,
+            fontSize = 48.sp,
+            lineHeight = 52.sp,
+            maxLines = 2
         )
     }
 }
 
-// ─── Section Label ────────────────────────────────────────────────────────────
-
 @Composable
-private fun NothingSetSectionLabel(
-    label: String,
-    number: Int?,          // for "ADD SET 3" — shows the upcoming set number
-    count: Int? = null     // for "LOGGED SETS" — shows total count
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(4.dp)
-                    .background(HeavyLiftsColors.Accent, CircleShape)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = if (number != null) "$label $number" else label,
-                color = HeavyLiftsColors.Fg3,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 3.sp,
-                fontFamily = HeavyLiftsType.Display
-            )
-        }
-
-        count?.let {
-            Text(
-                text = "$it TOTAL",
-                color = HeavyLiftsColors.BgChip,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 2.sp,
-                fontFamily = HeavyLiftsType.Display
-            )
-        }
-    }
+private fun SectionHeading(text: String) {
+    Text(
+        text = text,
+        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 13.dp, bottom = 5.dp),
+        color = HeavyLiftsColors.Fg1,
+        style = MaterialTheme.typography.titleLarge
+    )
 }
 
-// ─── Set Row ──────────────────────────────────────────────────────────────────
-
 @Composable
-fun NothingSetRow(
+private fun SetInputRow(
     setNumber: Int,
     weight: String,
     reps: String,
+    badgeColor: Color,
     onWeightChange: (String) -> Unit,
     onRepsChange: (String) -> Unit,
-    onDeleteSet: () -> Unit,
-    modifier: Modifier = Modifier
+    onDelete: () -> Unit,
+    readOnly: Boolean = false
 ) {
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // Set number — monospace terminal badge
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .background(HeavyLiftsColors.BgChip, RoundedCornerShape(12.dp))
-                .border(0.5.dp, HeavyLiftsColors.BorderSubtle, RoundedCornerShape(12.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = setNumber.toString().padStart(2, '0'),
-                color = HeavyLiftsColors.Fg3,
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp,
-                fontFamily = HeavyLiftsType.Display
-            )
-        }
-
-        // Weight field
-        NothingInputField(
+        SetNumberBadge(
+            number = setNumber,
+            modifier = Modifier.size(56.dp),
+            containerColor = badgeColor
+        )
+        WeightRepsField(
             value = weight,
+            placeholder = "Kg",
             onValueChange = onWeightChange,
-            label = "KG",
             keyboardType = KeyboardType.Decimal,
             imeAction = ImeAction.Next,
+            readOnly = readOnly,
             modifier = Modifier.weight(1f)
         )
-
-        // Reps field
-        NothingInputField(
+        WeightRepsField(
             value = reps,
+            placeholder = "Reps",
             onValueChange = onRepsChange,
-            label = "REPS",
             keyboardType = KeyboardType.Number,
             imeAction = ImeAction.Done,
+            readOnly = readOnly,
             modifier = Modifier.weight(1f)
         )
-
-        // Delete button
         IconButton(
-            onClick = onDeleteSet,
+            onClick = onDelete,
             modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(HeavyLiftsColors.AccentSoft)
+                .size(56.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .background(HeavyLiftsColors.DangerSoft)
         ) {
             Icon(
                 imageVector = Icons.Default.Delete,
                 contentDescription = "Delete set",
-                tint = HeavyLiftsColors.Accent,
-                modifier = Modifier.size(16.dp)
+                tint = HeavyLiftsColors.Danger,
+                modifier = Modifier.size(24.dp)
             )
         }
     }
 }
 
-// ─── Logged Set Row (local state — no VM per keystroke) ───────────────────────
-
 @Composable
-private fun NothingLoggedSetRow(
-    setItem: com.ghostbug.heavyliftsapp.domain.model.WorkoutEntryEntity,
-    onDeleteSet: () -> Unit
+private fun LoggedSetRow(
+    set: WorkoutEntryEntity,
+    onDelete: () -> Unit
 ) {
-    var localWeight by remember(setItem.id) { mutableStateOf(setItem.weight.toString()) }
-    var localReps by remember(setItem.id) { mutableStateOf(setItem.reps.toString()) }
+    var weight by remember(set.id) { mutableStateOf(set.weight.toString()) }
+    var reps by remember(set.id) { mutableStateOf(set.reps.toString()) }
 
-    NothingSetRow(
-        setNumber = setItem.sets,
-        weight = localWeight,
-        reps = localReps,
-        onWeightChange = { localWeight = it },
-        onRepsChange = { localReps = it },
-        onDeleteSet = onDeleteSet
-    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(30.dp))
+            .background(HeavyLiftsColors.BgOverlay)
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        SetNumberBadge(
+            number = set.sets,
+            modifier = Modifier.size(56.dp),
+            containerColor = HeavyLiftsColors.Accent,
+            contentColor = HeavyLiftsColors.NavyStrong
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        WeightRepsField(
+            value = weight,
+            placeholder = "",
+            label = "KG",
+            onValueChange = { weight = it },
+            keyboardType = KeyboardType.Decimal,
+            imeAction = ImeAction.Next,
+            readOnly = true,
+            modifier = Modifier.weight(1f)
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        WeightRepsField(
+            value = reps,
+            placeholder = "",
+            label = "REPS",
+            onValueChange = { reps = it },
+            keyboardType = KeyboardType.Number,
+            imeAction = ImeAction.Done,
+            readOnly = true,
+            modifier = Modifier.weight(1f)
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        IconButton(
+            onClick = onDelete,
+            modifier = Modifier
+                .size(56.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .background(HeavyLiftsColors.DangerSoft)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = "Delete set",
+                tint = HeavyLiftsColors.Danger,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
 }
 
-// ─── Input Field ──────────────────────────────────────────────────────────────
-
 @Composable
-private fun NothingInputField(
+private fun WeightRepsField(
     value: String,
+    placeholder: String,
     onValueChange: (String) -> Unit,
-    label: String,
     keyboardType: KeyboardType,
     imeAction: ImeAction,
+    readOnly: Boolean,
+    label: String? = null,
     modifier: Modifier = Modifier
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = modifier,
-        label = {
-            Text(
-                text = label,
-                fontSize = 9.sp,
-                letterSpacing = 2.sp,
-                fontFamily = HeavyLiftsType.Display
-            )
-        },
+        modifier = modifier.height(56.dp),
+        readOnly = readOnly,
         singleLine = true,
-        // Sharp 3dp corners — Nothing's terminal aesthetic
-        shape = RoundedCornerShape(12.dp),
-        keyboardOptions = KeyboardOptions(
-            keyboardType = keyboardType,
-            imeAction = imeAction
-        ),
+        shape = RoundedCornerShape(24.dp),
+        label = label?.let { fieldLabel ->
+            {
+                Text(
+                    text = fieldLabel,
+                    color = HeavyLiftsColors.Fg2,
+                    fontFamily = HeavyLiftsType.Body,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+            }
+        },
+        placeholder = if (placeholder.isNotEmpty()) {
+            {
+            Text(
+                text = placeholder,
+                color = HeavyLiftsColors.Fg2,
+                fontFamily = HeavyLiftsType.Body,
+                fontSize = 16.sp
+            )
+            }
+        } else null,
+        textStyle = MaterialTheme.typography.titleMedium,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor        = HeavyLiftsColors.Fg1,
-            unfocusedTextColor      = HeavyLiftsColors.Fg1,
-            focusedBorderColor      = HeavyLiftsColors.Fg1,
-            unfocusedBorderColor    = HeavyLiftsColors.BorderSubtle,
-            focusedLabelColor       = HeavyLiftsColors.Fg3,
-            unfocusedLabelColor     = HeavyLiftsColors.BgChip,
-            cursorColor             = HeavyLiftsColors.Accent,
-            focusedContainerColor   = HeavyLiftsColors.BgElevated,
+            focusedTextColor = HeavyLiftsColors.Fg1,
+            unfocusedTextColor = HeavyLiftsColors.Fg1,
+            focusedBorderColor = HeavyLiftsColors.Outline,
+            unfocusedBorderColor = HeavyLiftsColors.Outline,
+            focusedLabelColor = HeavyLiftsColors.Fg2,
+            unfocusedLabelColor = HeavyLiftsColors.Fg2,
+            focusedPlaceholderColor = HeavyLiftsColors.Fg2,
+            unfocusedPlaceholderColor = HeavyLiftsColors.Fg2,
+            cursorColor = HeavyLiftsColors.AccentStrong,
+            focusedContainerColor = HeavyLiftsColors.BgElevated,
             unfocusedContainerColor = HeavyLiftsColors.BgElevated,
+            disabledContainerColor = HeavyLiftsColors.BgElevated
         )
     )
-}
-
-// ─── Add Set Button ───────────────────────────────────────────────────────────
-
-@Composable
-private fun NothingAddSetButton(onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .height(48.dp)
-            .background(HeavyLiftsColors.BgChip, RoundedCornerShape(12.dp))
-            .border(0.5.dp, HeavyLiftsColors.BorderSubtle, RoundedCornerShape(12.dp))
-            // Tap handled by clickable on the scaffold row — wire through onClick
-            .dotMatrixBackground(
-                dotColor = HeavyLiftsColors.BgChip.copy(alpha = 0.08f),
-                spacing = 10f,
-                radius = 0.9f
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        // Use a transparent OutlinedButton so ripple + click still work
-        androidx.compose.material3.TextButton(
-            onClick = onClick,
-            modifier = Modifier.fillMaxSize(),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = null,
-                tint = HeavyLiftsColors.Fg1,
-                modifier = Modifier.size(14.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "ADD SET",
-                color = HeavyLiftsColors.Fg1,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 3.sp,
-                fontFamily = HeavyLiftsType.Display
-            )
-        }
-    }
-}
-
-// ─── Save FAB ─────────────────────────────────────────────────────────────────
-
-@Composable
-fun NothingSaveFab(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    ExtendedFloatingActionButton(
-        onClick = onClick,
-        modifier = modifier,
-        containerColor = HeavyLiftsColors.Fg1,
-        contentColor = HeavyLiftsColors.Bg,
-        shape = RoundedCornerShape(20.dp),
-        // No elevation — Nothing OS is flat
-        elevation = FloatingActionButtonDefaults.elevation(
-            defaultElevation = 0.dp,
-            pressedElevation = 0.dp
-        )
-    ) {
-        Icon(
-            imageVector = Icons.Default.Check,
-            contentDescription = "Save workout",
-            tint = HeavyLiftsColors.Bg,
-            modifier = Modifier.size(16.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = "SAVE",
-            fontWeight = FontWeight.Black,
-            fontSize = 11.sp,
-            letterSpacing = 3.sp,
-            fontFamily = HeavyLiftsType.Display,
-            color = HeavyLiftsColors.Bg
-        )
-    }
 }

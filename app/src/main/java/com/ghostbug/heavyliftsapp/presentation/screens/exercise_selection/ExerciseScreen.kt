@@ -22,11 +22,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -40,9 +41,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,25 +51,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ghostbug.heavyliftsapp.domain.model.ExerciseEntity
 import com.ghostbug.heavyliftsapp.presentation.ui.theme.HeavyLiftsColors
 import com.ghostbug.heavyliftsapp.presentation.ui.theme.HeavyLiftsType
-
-// Dot-matrix canvas background — Nothing's signature texture
-private fun Modifier.dotMatrixBackground(
-    dotColor: Color = HeavyLiftsColors.BgChip.copy(alpha = 0.15f),
-    spacing: Float = 14f,
-    radius: Float = 1.1f
-): Modifier = this.drawBehind {
-    val cols = (size.width / spacing).toInt() + 1
-    val rows = (size.height / spacing).toInt() + 1
-    for (col in 0..cols) {
-        for (row in 0..rows) {
-            drawCircle(
-                color = dotColor,
-                radius = radius,
-                center = Offset(col * spacing, row * spacing)
-            )
-        }
-    }
-}
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -116,20 +95,20 @@ fun ExerciseSelectionContent(
     onBack: () -> Unit,
     onEvent: (ExerciseEvent) -> Unit
 ) {
-    NothingSearchLayout(
-        query            = state.searchQuery,
-        isSearching      = state.isSearching,
-        exercises        = state.exercises,
-        onBack           = onBack,
-        onQueryChange    = { onEvent(ExerciseEvent.OnSearchQueryChange(it)) },
-        onAddExercise    = { onEvent(ExerciseEvent.OnAddExercise(it)) }
+    ExerciseSelectionLayout(
+        query = state.searchQuery,
+        isSearching = state.isSearching,
+        exercises = state.exercises,
+        onBack = onBack,
+        onQueryChange = { onEvent(ExerciseEvent.OnSearchQueryChange(it)) },
+        onAddExercise = { onEvent(ExerciseEvent.OnAddExercise(it)) }
     )
 }
 
 // ─── Main Layout ──────────────────────────────────────────────────────────────
 
 @Composable
-fun NothingSearchLayout(
+fun ExerciseSelectionLayout(
     query: String,
     isSearching: Boolean,
     exercises: List<ExerciseEntity>,
@@ -143,33 +122,27 @@ fun NothingSearchLayout(
             .background(HeavyLiftsColors.Bg)
     ) {
         // ── Top bar ───────────────────────────────────────────────
-        NothingTopBar(onBack = onBack)
+        SelectionTopBar(onBack = onBack)
 
         // ── Page heading ──────────────────────────────────────────
-        NothingPageHeading(resultCount = if (!isSearching) exercises.size else null)
+        SelectionHeading()
 
         // ── Search field ──────────────────────────────────────────
-        NothingSearchField(
+        ExerciseSearchField(
             query = query,
             onQueryChange = onQueryChange
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // ── Section label row ─────────────────────────────────────
-        HorizontalDivider(color = HeavyLiftsColors.BorderSubtle, thickness = 0.5.dp)
-
-        NothingSectionLabel(
-            label = "EXERCISES",
-            count = if (!isSearching && exercises.isNotEmpty()) exercises.size else null
+        ExerciseSectionHeader(
+            count = if (!isSearching) exercises.size else null
         )
 
         // ── Body ──────────────────────────────────────────────────
         Box(modifier = Modifier.weight(1f)) {
             when {
-                isSearching        -> NothingLoadingIndicator()
-                exercises.isEmpty() -> NothingEmptyState(hasQuery = query.isNotEmpty())
-                else               -> NothingExerciseList(
+        isSearching         -> ExerciseLoadingIndicator()
+                exercises.isEmpty() -> ExerciseEmptyState(hasQuery = query.isNotEmpty())
+                else               -> ExerciseList(
                     exercises = exercises,
                     onClickExercise = onAddExercise
                 )
@@ -181,43 +154,25 @@ fun NothingSearchLayout(
 // ─── Top Bar ─────────────────────────────────────────────────────────────────
 
 @Composable
-private fun NothingTopBar(onBack: () -> Unit) {
+private fun SelectionTopBar(onBack: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 4.dp, end = 20.dp, top = 12.dp, bottom = 0.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Start
     ) {
-        IconButton(onClick = onBack) {
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier
+                .size(48.dp)
+                .background(HeavyLiftsColors.BgElevated, CircleShape)
+        ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Back",
-                tint = HeavyLiftsColors.Fg3,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Decorative glyph dots — top-right signature
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(5.dp)
-                    .background(HeavyLiftsColors.Accent, CircleShape)
-            )
-            Box(
-                modifier = Modifier
-                    .size(4.dp)
-                    .background(HeavyLiftsColors.BgChip, CircleShape)
-            )
-            Box(
-                modifier = Modifier
-                    .size(4.dp)
-                    .background(HeavyLiftsColors.BgChip, CircleShape)
+                tint = HeavyLiftsColors.Navy,
+                modifier = Modifier.size(24.dp)
             )
         }
     }
@@ -226,25 +181,26 @@ private fun NothingTopBar(onBack: () -> Unit) {
 // ─── Page Heading ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun NothingPageHeading(resultCount: Int?) {
+private fun SelectionHeading() {
     Column(
-        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 20.dp)
+        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 18.dp, bottom = 20.dp)
     ) {
         Text(
-            text = "SELECT",
-            color = HeavyLiftsColors.Fg3,
-            fontSize = 10.sp,
+            text = "BUILD YOUR SESSION",
+            color = HeavyLiftsColors.AccentStrong,
+            fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
-            letterSpacing = 3.sp,
-            fontFamily = HeavyLiftsType.Display
+            letterSpacing = 1.6.sp,
+            fontFamily = HeavyLiftsType.Body
         )
         Text(
-            text = "EXERCISE",
+            text = "Choose exercise",
             color = HeavyLiftsColors.Fg1,
-            fontWeight = FontWeight.Black,
-            fontSize = 30.sp,
-            letterSpacing = (-1).sp,
-            lineHeight = 30.sp
+            fontFamily = HeavyLiftsType.Display,
+            fontWeight = FontWeight.Bold,
+            fontSize = 40.sp,
+            letterSpacing = (-0.7).sp,
+            lineHeight = 46.sp
         )
     }
 }
@@ -252,7 +208,7 @@ private fun NothingPageHeading(resultCount: Int?) {
 // ─── Search Field ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun NothingSearchField(
+private fun ExerciseSearchField(
     query: String,
     onQueryChange: (String) -> Unit
 ) {
@@ -261,22 +217,21 @@ private fun NothingSearchField(
         onValueChange = onQueryChange,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = 24.dp),
         placeholder = {
             Text(
-                text = "SEARCH_",
-                color = HeavyLiftsColors.BgChip,
-                fontSize = 13.sp,
-                fontFamily = HeavyLiftsType.Display,
-                letterSpacing = 1.sp
+                text = "Search exercises",
+                color = HeavyLiftsColors.Fg3,
+                fontSize = 15.sp,
+                fontFamily = HeavyLiftsType.Body
             )
         },
         leadingIcon = {
             Icon(
                 Icons.Default.Search,
                 contentDescription = null,
-                tint = HeavyLiftsColors.Fg3,
-                modifier = Modifier.size(18.dp)
+                tint = HeavyLiftsColors.Fg2,
+                modifier = Modifier.size(22.dp)
             )
         },
         trailingIcon = {
@@ -285,22 +240,23 @@ private fun NothingSearchField(
                     Icon(
                         Icons.Default.Clear,
                         contentDescription = "Clear",
-                        tint = HeavyLiftsColors.Fg3,
-                        modifier = Modifier.size(16.dp)
+                        tint = HeavyLiftsColors.Fg2,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
         },
         singleLine = true,
-        // Sharp corners — Nothing OS never rounds search bars heavily
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(26.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor        = HeavyLiftsColors.Fg1,
-            unfocusedTextColor      = HeavyLiftsColors.Fg1,
-            focusedBorderColor      = HeavyLiftsColors.Fg1,
-            unfocusedBorderColor    = HeavyLiftsColors.BorderSubtle,
-            cursorColor             = HeavyLiftsColors.Accent,
-            focusedContainerColor   = HeavyLiftsColors.BgElevated,
+            focusedTextColor = HeavyLiftsColors.Fg1,
+            unfocusedTextColor = HeavyLiftsColors.Fg1,
+            focusedBorderColor = HeavyLiftsColors.AccentStrong,
+            unfocusedBorderColor = HeavyLiftsColors.BorderSubtle,
+            focusedPlaceholderColor = HeavyLiftsColors.Fg3,
+            unfocusedPlaceholderColor = HeavyLiftsColors.Fg3,
+            cursorColor = HeavyLiftsColors.AccentStrong,
+            focusedContainerColor = HeavyLiftsColors.BgOverlay,
             unfocusedContainerColor = HeavyLiftsColors.BgElevated,
         )
     )
@@ -309,39 +265,31 @@ private fun NothingSearchField(
 // ─── Section Label ────────────────────────────────────────────────────────────
 
 @Composable
-private fun NothingSectionLabel(label: String, count: Int?) {
+private fun ExerciseSectionHeader(count: Int?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+            .padding(horizontal = 24.dp, vertical = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(4.dp)
-                    .background(HeavyLiftsColors.Accent, CircleShape)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = label,
-                color = HeavyLiftsColors.Fg3,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 3.sp,
-                fontFamily = HeavyLiftsType.Display
-            )
-        }
+        Text(
+            text = "Exercises",
+            color = HeavyLiftsColors.Fg1,
+            style = MaterialTheme.typography.titleLarge
+        )
 
         count?.let {
             Text(
-                text = "$it FOUND",
-                color = HeavyLiftsColors.BgChip,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 2.sp,
-                fontFamily = HeavyLiftsType.Display
+                text = "$it found",
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(HeavyLiftsColors.BgElevated)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                color = HeavyLiftsColors.Fg2,
+                fontFamily = HeavyLiftsType.Body,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold
             )
         }
     }
@@ -350,24 +298,20 @@ private fun NothingSectionLabel(label: String, count: Int?) {
 // ─── Exercise List ────────────────────────────────────────────────────────────
 
 @Composable
-fun NothingExerciseList(
+fun ExerciseList(
     exercises: List<ExerciseEntity>,
     onClickExercise: (ExerciseEntity) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(0.dp),
-        contentPadding = PaddingValues(bottom = 32.dp)
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp)
     ) {
         items(items = exercises, key = { it.id }) { exercise ->
-            NothingExerciseItem(
+            ExerciseCard(
                 exercise = exercise,
                 onClickExercise = { onClickExercise(exercise) }
-            )
-            HorizontalDivider(
-                color = HeavyLiftsColors.BorderSubtle,
-                thickness = 0.5.dp
             )
         }
     }
@@ -376,7 +320,7 @@ fun NothingExerciseList(
 // ─── Exercise Item ────────────────────────────────────────────────────────────
 
 @Composable
-private fun NothingExerciseItem(
+private fun ExerciseCard(
     exercise: ExerciseEntity,
     onClickExercise: () -> Unit,
     modifier: Modifier = Modifier
@@ -384,60 +328,63 @@ private fun NothingExerciseItem(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(28.dp))
+            .background(HeavyLiftsColors.BgElevated)
             .clickable { onClickExercise() }
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Glyph accent bar — flips red on press via clickable ripple region
         Box(
             modifier = Modifier
-                .width(2.dp)
-                .height(32.dp)
-                .background(HeavyLiftsColors.BgChip, RoundedCornerShape(1.dp))
-        )
+                .size(54.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(HeavyLiftsColors.AccentSoft),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.FitnessCenter,
+                contentDescription = null,
+                tint = HeavyLiftsColors.NavyStrong,
+                modifier = Modifier.size(25.dp)
+            )
+        }
 
         Spacer(modifier = Modifier.width(14.dp))
 
-        // Exercise info
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = exercise.exerciseName.uppercase(),
+                text = exercise.exerciseName,
                 color = HeavyLiftsColors.Fg1,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 0.5.sp,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
                 fontFamily = HeavyLiftsType.Display,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Spacer(modifier = Modifier.height(3.dp))
             Text(
-                text = exercise.category.uppercase(),
+                text = exercise.category,
                 color = HeavyLiftsColors.Fg3,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Normal,
-                letterSpacing = 2.sp,
-                fontFamily = HeavyLiftsType.Display
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                fontFamily = HeavyLiftsType.Body
             )
         }
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        // Add button — Nothing style: outlined square
         Box(
             modifier = Modifier
-                .size(32.dp)
-                .background(Color.Transparent)
-                .clip(RoundedCornerShape(12.dp))
-                .background(HeavyLiftsColors.BgChip)
-                .clickable { onClickExercise() },
+                .size(42.dp)
+                .clip(CircleShape)
+                .background(HeavyLiftsColors.AccentStrong),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Default.Add,
-                contentDescription = "Add exercise",
-                tint = HeavyLiftsColors.Fg1,
-                modifier = Modifier.size(16.dp)
+                contentDescription = null,
+                tint = HeavyLiftsColors.White,
+                modifier = Modifier.size(21.dp)
             )
         }
     }
@@ -446,21 +393,19 @@ private fun NothingExerciseItem(
 // ─── Loading ──────────────────────────────────────────────────────────────────
 
 @Composable
-private fun NothingLoadingIndicator() {
+private fun ExerciseLoadingIndicator() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             CircularProgressIndicator(
-                color = HeavyLiftsColors.Fg1,
-                strokeWidth = 1.5.dp,
-                modifier = Modifier.size(22.dp)
+                color = HeavyLiftsColors.AccentStrong,
+                strokeWidth = 3.dp,
+                modifier = Modifier.size(32.dp)
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "SEARCHING",
-                color = HeavyLiftsColors.BgChip,
-                fontSize = 9.sp,
-                letterSpacing = 3.sp,
-                fontFamily = HeavyLiftsType.Display
+                text = "Searching…",
+                color = HeavyLiftsColors.Fg2,
+                style = MaterialTheme.typography.bodyMedium
             )
         }
     }
@@ -469,56 +414,43 @@ private fun NothingLoadingIndicator() {
 // ─── Empty State ──────────────────────────────────────────────────────────────
 
 @Composable
-private fun NothingEmptyState(hasQuery: Boolean) {
+private fun ExerciseEmptyState(hasQuery: Boolean) {
     Box(
         modifier = Modifier
-            .fillMaxSize()
-            .dotMatrixBackground(),
+            .fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Glyph: cross pattern using dots
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(5.dp)
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .clip(CircleShape)
+                    .background(HeavyLiftsColors.AccentSoft),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(5.dp)
-                        .background(HeavyLiftsColors.BgChip, CircleShape)
-                )
-                Box(
-                    modifier = Modifier
-                        .size(5.dp)
-                        .background(HeavyLiftsColors.Accent, CircleShape)
-                )
-                Box(
-                    modifier = Modifier
-                        .size(5.dp)
-                        .background(HeavyLiftsColors.BgChip, CircleShape)
+                Icon(
+                    imageVector = if (hasQuery) Icons.Default.Search else Icons.Default.FitnessCenter,
+                    contentDescription = null,
+                    tint = HeavyLiftsColors.NavyStrong,
+                    modifier = Modifier.size(32.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             Text(
-                text = if (hasQuery) "NO MATCH" else "NO EXERCISES",
+                text = if (hasQuery) "No matches" else "No exercises yet",
                 color = HeavyLiftsColors.Fg1,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 3.sp,
-                fontFamily = HeavyLiftsType.Display
+                style = MaterialTheme.typography.titleLarge
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = if (hasQuery) "TRY A DIFFERENT TERM" else "DATABASE EMPTY",
-                color = HeavyLiftsColors.BgChip,
-                fontSize = 9.sp,
-                letterSpacing = 2.sp,
-                fontFamily = HeavyLiftsType.Display,
+                text = if (hasQuery) "Try a different search term." else "Exercises will appear here when available.",
+                color = HeavyLiftsColors.Fg2,
+                style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center
             )
         }
@@ -528,32 +460,37 @@ private fun NothingEmptyState(hasQuery: Boolean) {
 // ─── Error ────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun NothingErrorMessage(message: String) {
+private fun ExerciseErrorMessage(message: String) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Box(
                 modifier = Modifier
-                    .size(5.dp)
-                    .background(HeavyLiftsColors.Accent, CircleShape)
-            )
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(HeavyLiftsColors.DangerSoft),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.FitnessCenter,
+                    contentDescription = null,
+                    tint = HeavyLiftsColors.Danger,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "ERROR",
-                color = HeavyLiftsColors.Accent,
-                fontSize = 9.sp,
-                letterSpacing = 3.sp,
-                fontFamily = HeavyLiftsType.Display,
-                fontWeight = FontWeight.Bold
+                text = "Something went wrong",
+                color = HeavyLiftsColors.Fg1,
+                style = MaterialTheme.typography.titleMedium
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = message.uppercase(),
-                color = HeavyLiftsColors.Fg3,
-                fontSize = 11.sp,
-                fontFamily = HeavyLiftsType.Display,
+                text = message,
+                color = HeavyLiftsColors.Fg2,
+                style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 32.dp),
-                lineHeight = 18.sp
+                lineHeight = 20.sp
             )
         }
     }

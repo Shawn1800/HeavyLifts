@@ -136,7 +136,7 @@ fun SignInScreen(
                 TextButton(onClick = onNavigateToSignUp) {
                     Text(
                         text = "Create an account",
-                        color = HeavyLiftsColors.Accent,
+                        color = HeavyLiftsColors.AccentStrong,
                         fontFamily = HeavyLiftsType.Display,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold

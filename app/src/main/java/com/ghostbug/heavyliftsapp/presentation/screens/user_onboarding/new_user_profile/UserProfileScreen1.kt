@@ -58,7 +58,6 @@ fun UserProfileScreen1(
         modifier = Modifier
             .fillMaxSize()
             .background(HeavyLiftsColors.Bg)
-            .dotMatrix()
     ) {
         SnackbarHost(
             hostState = snackbarHostState,
@@ -130,7 +129,7 @@ fun UserProfileScreen1(
                         state.userNameError != null -> Icon(
                             Icons.Default.Close,
                             contentDescription = null,
-                            tint = HeavyLiftsColors.Accent,
+                            tint = HeavyLiftsColors.AccentStrong,
                             modifier = Modifier.size(18.dp)
                         )
                         state.userName.length in 3..20 && !state.isLoading -> Icon(
