@@ -140,9 +140,9 @@ fun ExerciseSelectionLayout(
         // ── Body ──────────────────────────────────────────────────
         Box(modifier = Modifier.weight(1f)) {
             when {
-        isSearching         -> ExerciseLoadingIndicator()
+                isSearching -> ExerciseLoadingIndicator()
                 exercises.isEmpty() -> ExerciseEmptyState(hasQuery = query.isNotEmpty())
-                else               -> ExerciseList(
+                else -> ExerciseList(
                     exercises = exercises,
                     onClickExercise = onAddExercise
                 )
