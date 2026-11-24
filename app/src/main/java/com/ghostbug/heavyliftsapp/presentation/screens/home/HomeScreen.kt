@@ -30,7 +30,6 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarToday
@@ -63,6 +62,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -72,6 +73,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ghostbug.heavyLifts.R
 import com.ghostbug.heavyliftsapp.presentation.screens.signup.SignUpEvent
 import com.ghostbug.heavyliftsapp.presentation.screens.signup.SignUpUiEvent
 import com.ghostbug.heavyliftsapp.presentation.screens.signup.SignUpViewModel
@@ -172,19 +174,10 @@ private fun HomeContent(
     val firstMonday = today.minus(today.dayOfWeek.ordinal + (weekCount - 1) * 7, DateTimeUnit.DAY)
     val selectedWeek = (firstMonday.daysUntil(state.selectedDate) / 7).coerceIn(0, weekCount - 1)
     val pagerState = rememberPagerState(initialPage = selectedWeek) { weekCount }
+    val canEdit = state.selectedDate == today
     val context = LocalContext.current
     LaunchedEffect(selectedWeek) {
         pagerState.scrollToPage(selectedWeek)
-    }
-
-    // Calculated Volume & Counts
-    val totalVolumeKg = remember(state.workouts) {
-        state.workouts.sumOf { workout ->
-            workout.sets.sumOf { (it.weight * it.reps).toDouble() }
-        }
-    }
-    val totalSetsCount = remember(state.workouts) {
-        state.workouts.sumOf { it.sets.size }
     }
 
     Column(
@@ -207,12 +200,12 @@ private fun HomeContent(
                 }
                 Spacer(Modifier.height(16.dp))
                 WeeklyCalendar(pagerState, firstMonday, state.selectedDate, onDateSelected)
-                Spacer(Modifier.height(16.dp))
-                Box(Modifier.padding(horizontal = 16.dp)) {
-                    TotalVolumeCard(totalVolumeKg, state.workouts.size, totalSetsCount)
+                if (!state.isLoading && state.errorMessage == null && state.workouts.isNotEmpty()) {
+                    Spacer(Modifier.height(16.dp))
+                    SessionSummaryCard(state.workouts, Modifier.padding(horizontal = 16.dp))
                 }
                 Text(
-                    text = "Your lifts",
+                    text = "Today's exercises",
                     modifier = Modifier.padding(start = 24.dp, top = 24.dp, bottom = 10.dp),
                     color = HeavyLiftsColors.Fg1,
                     fontFamily = HeavyLiftsType.Display,
@@ -225,28 +218,25 @@ private fun HomeContent(
                 state.errorMessage != null -> item {
                     HeavyErrorMessage(state.errorMessage) { onEvent(HomeEvent.RefreshWorkouts) }
                 }
-                state.workouts.isEmpty() -> item { HeavyEmptyState() }
-                else -> items(state.workouts, key = { it.exercise.id }) { workout ->
+                state.workouts.isEmpty() -> item { HeavyEmptyState(canEdit) }
+                else -> items(state.workouts, key = { "${state.selectedDate}:${it.exercise.id}" }) { workout ->
                     HeavyWorkoutCard(
                         workout = workout,
                         modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
-                        onAddSetClick = {
-                            if (today == state.selectedDate) onEvent(HomeEvent.EditWorkout(workout.exercise.id))
-                            else onEvent(HomeEvent.Message("Previous dates are read only"))
+                        onEdit = if (canEdit) {
+                            { onEvent(HomeEvent.EditWorkout(workout.exercise.id)) }
+                        } else {
+                            null
                         }
                     )
                 }
             }
         }
 
-        Box(Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp)) {
-            NewLiftActionBar(
-                onClickNewLift = {
-                    if (today == state.selectedDate) onEvent(HomeEvent.OnAddWorkoutClick)
-                    else onEvent(HomeEvent.Message("Previous dates are read only"))
-                },
-
-            )
+        if (canEdit) {
+            Box(Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp)) {
+                NewLiftActionBar(onClickNewLift = { onEvent(HomeEvent.OnAddWorkoutClick) })
+            }
         }
     }
 }
@@ -313,93 +303,80 @@ private fun DateHeaderSection(
     }
 }
 
-// ─── Total Volume Card ────────────────────────────────────────────────────────
-
 @Composable
-private fun TotalVolumeCard(
-    volumeKg: Double,
-    liftCount: Int,
-    setCount: Int
-) {
-    Box(
-        modifier = Modifier
+private fun SessionSummaryCard(workouts: List<GroupedWorkout>, modifier: Modifier = Modifier) {
+    val setCount = workouts.sumOf { it.sets.size }
+    val repCount = workouts.sumOf { workout -> workout.sets.sumOf { it.reps } }
+    val records = workouts.filter { it.changePercent?.let { change -> change.isFinite() && change > 0f } == true }
+    val exerciseCount = workouts.size
+
+    Column(
+        modifier = modifier
             .fillMaxWidth()
             .background(HeavyLiftsColors.Accent, RoundedCornerShape(40.dp))
-            .padding(horizontal = 22.dp, vertical = 20.dp)
+            .padding(horizontal = 22.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Box(
-            modifier = Modifier.align(Alignment.TopEnd).size(72.dp)
-                .background(HeavyLiftsColors.AccentStrong, SetBadgeShape),
-            contentAlignment = Alignment.Center
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.FitnessCenter,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(26.dp).rotate(-45f)
-            )
-        }
-        Column {
-            Text(
-                text = "TOTAL VOLUME",
-                color = HeavyLiftsColors.NavyStrong,
-                fontFamily = HeavyLiftsType.Body,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.5.sp
-            )
-            Row(modifier = Modifier.padding(end = 76.dp), verticalAlignment = Alignment.Bottom) {
+            Column(Modifier.weight(1f)) {
                 Text(
-                    text = if (volumeKg % 1.0 == 0.0) "%.0f".format(volumeKg) else "%.1f".format(volumeKg),
-                    modifier = Modifier.weight(1f, fill = false),
+                    text = stringResource(R.string.home_session_summary),
                     color = HeavyLiftsColors.NavyStrong,
-                    fontFamily = HeavyLiftsType.Display,
-                    fontWeight = FontWeight.ExtraBold,
-                    autoSize = TextAutoSize.StepBased(minFontSize = 18.sp, maxFontSize = 88.sp),
-                    maxLines = 1,
-                    lineHeight = 96.sp,
-                    letterSpacing = (-3).sp
+                    fontFamily = HeavyLiftsType.Body,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp
                 )
                 Text(
-                    text = "kg",
-                    modifier = Modifier.padding(start = 6.dp, bottom = 12.dp),
+                    text = pluralStringResource(R.plurals.home_sets_logged, setCount, setCount),
                     color = HeavyLiftsColors.NavyStrong,
                     fontFamily = HeavyLiftsType.Display,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 24.sp
+                    fontSize = 36.sp,
+                    lineHeight = 40.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-1).sp
                 )
             }
-
-            Spacer(modifier = Modifier.height(10.dp))
-            // Sub-pill badges
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Surface(
-                    color = Color.White,
-                    shape = CircleShape
-                ) {
-                    Text(
-                        text = "$liftCount ${if (liftCount == 1) "lift" else "lifts"}",
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                        color = HeavyLiftsColors.Navy,
-                        fontFamily = HeavyLiftsType.Body,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Surface(
-                    color = Color.White,
-                    shape = CircleShape
-                ) {
-                    Text(
-                        text = "$setCount ${if (setCount == 1) "set" else "sets"}",
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                        color = HeavyLiftsColors.Navy,
-                        fontFamily = HeavyLiftsType.Body,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+            Box(
+                modifier = Modifier.size(56.dp).background(HeavyLiftsColors.AccentStrong, SetBadgeShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.FitnessCenter,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp).rotate(-45f)
+                )
+            }
+        }
+        Text(
+            text = stringResource(
+                R.string.home_session_counts,
+                pluralStringResource(R.plurals.home_exercise_count, exerciseCount, exerciseCount),
+                pluralStringResource(R.plurals.home_rep_count, repCount, repCount)
+            ),
+            color = HeavyLiftsColors.NavyStrong,
+            fontFamily = HeavyLiftsType.Body,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 14.sp
+        )
+        if (records.isNotEmpty()) {
+            Surface(color = Color.White, shape = CircleShape) {
+                Text(
+                    text = if (records.size == 1) {
+                        stringResource(R.string.home_exercise_pr, records.single().exercise.exerciseName)
+                    } else {
+                        stringResource(R.string.home_multiple_exercise_prs, records.size)
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                    color = HeavyLiftsColors.NavyStrong,
+                    fontFamily = HeavyLiftsType.Body,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
             }
         }
     }
@@ -551,10 +528,12 @@ private fun NewLiftActionBar(onClickNewLift: () -> Unit) {
 @Composable
 private fun HeavyWorkoutCard(
     workout: GroupedWorkout,
-    onAddSetClick: () -> Unit,
+    onEdit: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
+    val toggleSets = { expanded = !expanded }
+    val setsAction = stringResource(if (expanded) R.string.home_hide_sets else R.string.home_view_sets)
     val chevronRotation by animateFloatAsState(
         targetValue = if (expanded) 90f else 0f,
         animationSpec = tween(200),
@@ -576,7 +555,11 @@ private fun HeavyWorkoutCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onAddSetClick() }
+                .clickable(
+                    role = Role.Button,
+                    onClickLabel = if (onEdit == null) setsAction else null,
+                    onClick = onEdit ?: toggleSets
+                )
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -648,15 +631,23 @@ private fun HeavyWorkoutCard(
                 Spacer(modifier = Modifier.width(8.dp))
             }
 
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = "Details",
-                tint = HeavyLiftsColors.Fg3,
-                modifier = Modifier
-                    .size(24.dp)
-                    .rotate(chevronRotation)
-                    .clickable { expanded = !expanded }
-            )
+            if (onEdit == null) {
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = HeavyLiftsColors.Fg3,
+                    modifier = Modifier.size(24.dp).rotate(chevronRotation)
+                )
+            } else {
+                IconButton(onClick = toggleSets) {
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = setsAction,
+                        tint = HeavyLiftsColors.Fg3,
+                        modifier = Modifier.rotate(chevronRotation)
+                    )
+                }
+            }
         }
 
         AnimatedVisibility(
@@ -675,7 +666,7 @@ private fun HeavyWorkoutCard(
                         setNumber = index + 1,
                         weight = set.weight,
                         reps = set.reps,
-                        onClick = onAddSetClick
+                        onClick = onEdit
                     )
                 }
             }
@@ -688,14 +679,14 @@ private fun HeavySetRow(
     setNumber: Int,
     weight: Float,
     reps: Int,
-    onClick: () -> Unit
+    onClick: (() -> Unit)?
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .background(Color.White)
-            .clickable(onClick = onClick)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -802,7 +793,7 @@ private fun HeavyErrorMessage(message: String, onRetry: () -> Unit) {
 }
 
 @Composable
-private fun HeavyEmptyState() {
+private fun HeavyEmptyState(canEdit: Boolean) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -834,12 +825,14 @@ private fun HeavyEmptyState() {
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                "Tap '+ New lift' to start your workout.",
-                color = HeavyLiftsColors.Fg3,
-                fontSize = 14.sp
-            )
+            if (canEdit) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    "Tap '+ New lift' to start your workout.",
+                    color = HeavyLiftsColors.Fg3,
+                    fontSize = 14.sp
+                )
+            }
         }
     }
 }

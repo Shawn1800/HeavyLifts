@@ -10,3 +10,6 @@ data class WorkoutEntryEntity(
     val date: Long,
     val userId: String
 )
+
+internal fun WorkoutEntryEntity.estimatedOneRepMax(): Float =
+    if (reps > 1) weight * (1 + reps / 30f) else weight

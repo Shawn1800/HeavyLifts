@@ -1,26 +1,17 @@
 package com.ghostbug.heavyliftsapp.presentation.screens.progress
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.ghostbug.heavyliftsapp.domain.repository.ExerciseRepository
-import com.ghostbug.heavyliftsapp.domain.repository.OneRepMaxRepository
-import com.ghostbug.heavyliftsapp.domain.repository.WorkoutRepository
+import com.ghostbug.heavyliftsapp.domain.usecase.GetExerciseProgressUseCase
 
-class ProgressViewModelFactory(
-    private val workoutRepository: WorkoutRepository,
-    private val oneRepMaxRepository: OneRepMaxRepository,
-    private val exerciseRepository: ExerciseRepository,
-) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (!modelClass.isAssignableFrom(ProgressViewModel::class.java)) {
-            throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
-        }
-
-        @Suppress("UNCHECKED_CAST")
-        return ProgressViewModel(
-            oneRepMaxRepository,
-            workoutRepository,
-            exerciseRepository
-        ) as T
+internal fun progressViewModelFactory(
+    getExerciseProgress: GetExerciseProgressUseCase,
+    exerciseRepository: ExerciseRepository,
+): ViewModelProvider.Factory = viewModelFactory {
+    initializer {
+        ProgressViewModel(getExerciseProgress, exerciseRepository, createSavedStateHandle())
     }
 }

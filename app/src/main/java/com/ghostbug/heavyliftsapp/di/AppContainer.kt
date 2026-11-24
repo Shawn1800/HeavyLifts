@@ -3,6 +3,7 @@ package com.ghostbug.heavyliftsapp.di
 
 import android.content.Context
 import com.ghostbug.heavyLifts.BuildConfig
+import com.ghostbug.heavyliftsapp.domain.usecase.GetExerciseProgressUseCase
 import com.ghostbug.heavyliftsapp.domain.usecase.OneRepMaxUseCase
 import com.ghostbug.heavyliftsapp.domain.repository.AuthRepository
 import com.ghostbug.heavyliftsapp.data.repository_impl.AuthRepositoryImpl
@@ -52,5 +53,8 @@ class AppContainer(private val context: Context) {
     }
     val oneRepMaxUseCase: OneRepMaxUseCase by lazy {
         OneRepMaxUseCase(oneRepMaxRepository, workoutRepository)
+    }
+    val getExerciseProgress: GetExerciseProgressUseCase by lazy {
+        GetExerciseProgressUseCase(workoutRepository)
     }
 }

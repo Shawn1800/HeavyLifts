@@ -1,0 +1,20 @@
+<resources>
+    <string name="home_view_sets">View sets</string>
+    <string name="home_hide_sets">Hide sets</string>
+    <string name="home_session_summary">SESSION SUMMARY</string>
+    <string name="home_session_counts">%1$s · %2$s</string>
+    <string name="home_exercise_pr">%1$s PR</string>
+    <string name="home_multiple_exercise_prs">%1$d exercises with PRs</string>
+    <plurals name="home_sets_logged">
+        <item quantity="one">%1$d set logged</item>
+        <item quantity="other">%1$d sets logged</item>
+    </plurals>
+    <plurals name="home_exercise_count">
+        <item quantity="one">%1$d exercise</item>
+        <item quantity="other">%1$d exercises</item>
+    </plurals>
+    <plurals name="home_rep_count">
+        <item quantity="one">%1$d rep</item>
+        <item quantity="other">%1$d reps</item>
+    </plurals>
+</resources>

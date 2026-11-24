@@ -1,0 +1,30 @@
+<resources>
+    <string name="progress_heading_label">EXERCISE PROGRESS</string>
+    <string name="progress_title">Progress</string>
+    <string name="progress_select_exercise">Select exercise</string>
+    <string name="progress_all_time_pr">ALL-TIME PR</string>
+    <string name="progress_weight_kg">%1$s kg</string>
+    <string name="progress_weight_change">%1$s since first session</string>
+    <string name="progress_estimated_pr">Est. 1RM %1$s kg</string>
+    <string name="progress_progression">Progression</string>
+    <string name="progress_metric_top_weight">Top weight</string>
+    <string name="progress_metric_estimated_max">Est. 1RM</string>
+    <string name="progress_metric_estimated_max_full">Estimated one-rep max</string>
+    <string name="progress_range_week">1 week</string>
+    <string name="progress_range_month">1 month</string>
+    <string name="progress_range_year">1 year</string>
+    <string name="progress_range_all">All</string>
+    <string name="progress_no_sessions_in_range">No sessions in this date range.</string>
+    <string name="progress_session_set">%1$s kg × %2$s</string>
+    <string name="progress_session_pr_increase">+%1$s kg PR</string>
+    <string name="progress_chart_summary">%1$s chart. Date range %2$s to %3$s. Lowest %4$s. Highest %5$s. Latest %6$s.</string>
+    <string name="progress_chart_single_session">%1$s chart. %2$s, %3$s.</string>
+    <string name="progress_loading">Loading progress…</string>
+    <string name="progress_load_failed">Couldn’t load progress</string>
+    <string name="progress_load_failed_detail">Try again to load your progress.</string>
+    <string name="progress_no_exercises">No exercises available</string>
+    <string name="progress_no_exercises_detail">Check again to load the exercise list.</string>
+    <string name="progress_no_lifts">No lifts logged yet</string>
+    <string name="progress_no_lifts_detail">Log a set for this exercise to see your progress here.</string>
+    <string name="progress_try_again">Try again</string>
+</resources>

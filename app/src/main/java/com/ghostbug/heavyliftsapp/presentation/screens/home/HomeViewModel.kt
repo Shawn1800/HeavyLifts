@@ -14,6 +14,7 @@ import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -72,7 +73,9 @@ class HomeViewModel(
                 _state.update {
                     it.copy(
                         selectedDate = event.date,
-                        selectedDateMillis = millis
+                        selectedDateMillis = millis,
+                        isLoading = true,
+                        errorMessage = null
                     )
                 }
                 observeWorkoutsForDate(millis)
@@ -121,8 +124,14 @@ class HomeViewModel(
                     val workoutsDeferred = async { workoutRepository.getWorkoutByDate(dateMillis) }
                     val maxesDeferred = async { oneRepMaxRepository.getOneRepMaxForDate(dateMillis) }
 
-                    val workouts = try { workoutsDeferred.await() } catch (_: Exception) { emptyList() }
-                    val oneRepMaxes = try { maxesDeferred.await() } catch (_: Exception) { emptyList() }
+                    val workouts = workoutsDeferred.await()
+                    val oneRepMaxes = try {
+                        maxesDeferred.await()
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        emptyList()
+                    }
 
                     val oneRMMap = oneRepMaxes.associateBy { it.exerciseId }
 
@@ -146,6 +155,7 @@ class HomeViewModel(
                             )
                         }
 
+                    ensureActive()
                     _state.update { it.copy(workouts = grouped, isLoading = false) }
                 }
             } catch (e: Exception) {

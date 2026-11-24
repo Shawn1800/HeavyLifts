@@ -10,6 +10,7 @@ import com.ghostbug.heavyliftsapp.data.remote.dto.toDto
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.postgrest.query.Count
 import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -29,6 +30,7 @@ class WorkoutRepositoryImpl(
         const val COLUMN_WEIGHT = "weight"
         const val COLUMN_ID = "id"
         const val EXERCISES_JOIN = "*, exercises(*)"
+        const val HISTORY_PAGE_SIZE = 1_000
     }
 
     private val currentUserId: String?
@@ -104,16 +106,30 @@ class WorkoutRepositoryImpl(
     override suspend fun getWorkoutsByExercise(exerciseId: Long): List<WorkoutEntryEntity> {
         val userId = currentUserId ?: return emptyList()
         return withContext(Dispatchers.IO) {
-            postgrest.from(TABLE_WORKOUT_ENTRIES)
-                .select {
-                    filter {
-                        eq(COLUMN_USER_ID, userId)
-                        eq(COLUMN_EXERCISE_ID, exerciseId)
-                    }
-                    order(COLUMN_DATE, Order.ASCENDING)
-                }
-                .decodeList<WorkoutEntryEntityDto>()
-                .map { it.toDomain() }
+            val entries = buildList {
+                var lastId: Long? = null
+                var total: Long? = null
+                do {
+                    val afterId = lastId
+                    val result = postgrest.from(TABLE_WORKOUT_ENTRIES)
+                        .select {
+                            if (afterId == null) count(Count.EXACT)
+                            filter {
+                                eq(COLUMN_USER_ID, userId)
+                                eq(COLUMN_EXERCISE_ID, exerciseId)
+                                if (afterId != null) gt(COLUMN_ID, afterId)
+                            }
+                            order(COLUMN_ID, Order.ASCENDING)
+                            limit(HISTORY_PAGE_SIZE.toLong())
+                        }
+                    if (afterId == null) total = result.countOrNull()
+                    val page = result.decodeList<WorkoutEntryEntityDto>()
+                    page.forEach { add(it.toDomain()) }
+                    lastId = page.lastOrNull()?.id
+                    val hasMore = total?.let { size < it } ?: (page.size == HISTORY_PAGE_SIZE)
+                } while (lastId != null && hasMore)
+            }
+            entries.sortedBy { it.date }
         }
     }
 

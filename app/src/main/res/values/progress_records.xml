@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="progress_records_title">Personal records</string>
+    <string name="progress_record_heaviest">Heaviest weight</string>
+    <string name="progress_record_heaviest_initials">HW</string>
+    <string name="progress_record_volume">Best set volume</string>
+    <string name="progress_record_volume_initials">BV</string>
+    <string name="progress_record_max_reps">Max reps</string>
+    <string name="progress_record_reps_initials">MR</string>
+    <string name="progress_record_detail">%1$s × %2$s · %3$s</string>
+    <plurals name="progress_record_reps">
+        <item quantity="one">%1$d rep</item>
+        <item quantity="other">%1$d reps</item>
+    </plurals>
+</resources>

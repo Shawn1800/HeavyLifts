@@ -45,7 +45,7 @@ import com.ghostbug.heavyliftsapp.presentation.screens.profile.ProfileScreen
 import com.ghostbug.heavyliftsapp.presentation.screens.profile.ProfileViewModel
 import com.ghostbug.heavyliftsapp.presentation.screens.progress.ProgressScreen
 import com.ghostbug.heavyliftsapp.presentation.screens.progress.ProgressViewModel
-import com.ghostbug.heavyliftsapp.presentation.screens.progress.ProgressViewModelFactory
+import com.ghostbug.heavyliftsapp.presentation.screens.progress.progressViewModelFactory
 import com.ghostbug.heavyliftsapp.presentation.screens.root.AuthGate
 import com.ghostbug.heavyliftsapp.presentation.screens.root.RootViewModel
 import com.ghostbug.heavyliftsapp.presentation.screens.root.RootViewModelFactory
@@ -112,13 +112,6 @@ fun MainNavigation(
 
     val profileViewModel: ProfileViewModel = viewModel(
         factory = ProfileViewModelFactory(container.userProfileRepository, container.authRepository)
-    )
-    val progressViewModel : ProgressViewModel = viewModel(
-        factory = ProgressViewModelFactory(
-            container.workoutRepository,
-            container.oneRepMaxRepository,
-            container.exerciseRepository,
-        )
     )
     val navigationState = rememberNavigationState(
         startRoute = Route.HomeScreen,
@@ -354,6 +347,12 @@ fun MainNavigation(
                     }
 
                     entry<Route.ProgressScreen> {
+                        val progressViewModel: ProgressViewModel = viewModel(
+                            factory = progressViewModelFactory(
+                                container.getExerciseProgress,
+                                container.exerciseRepository,
+                            )
+                        )
                         ProgressScreen(progressViewModel = progressViewModel)
                     }
                 }

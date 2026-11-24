@@ -2,6 +2,7 @@ package com.ghostbug.heavyliftsapp.domain.usecase
 
 import com.ghostbug.heavyliftsapp.domain.model.OneRepMaxEntity
 import com.ghostbug.heavyliftsapp.domain.model.WorkoutEntryEntity
+import com.ghostbug.heavyliftsapp.domain.model.estimatedOneRepMax
 import com.ghostbug.heavyliftsapp.domain.repository.OneRepMaxRepository
 import com.ghostbug.heavyliftsapp.domain.repository.WorkoutRepository
 
@@ -37,7 +38,7 @@ class OneRepMaxUseCase(
         
         sessionsByDate.forEach { (localDate, sessionSets) ->
             val sessionDateMillis = localDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
-            val sessionMax1RM = sessionSets.maxOf { calculate1RM(it.weight, it.reps) }
+            val sessionMax1RM = sessionSets.maxOf { it.estimatedOneRepMax() }
             val prevBest = runningPersonalBest
             val changePercent = if (prevBest > 0) ((sessionMax1RM - prevBest) / prevBest) * 100 else 0.0f
 
@@ -57,9 +58,5 @@ class OneRepMaxUseCase(
                 runningPersonalBest = sessionMax1RM
             }
         }
-    }
-    private fun calculate1RM(weight: Float, reps: Int): Float {
-        if (reps == 1) return weight
-        return if (reps > 0) weight * (1 + reps / 30f) else weight
     }
 }
