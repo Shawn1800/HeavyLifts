@@ -13,3 +13,27 @@
 .externalNativeBuild
 .cxx
 local.properties
+app/build
+*.apk
+*.aab
+*.apks
+
+# Secrets and local config
+secrets.properties
+
+# Signing files
+*.jks
+*.keystore
+*.p12
+
+# Release binaries
+/release/
+app-release.aab
+
+# Google Services (Optional: keep private)
+# app/google-services.json
+
+# Kotlin
+.kotlin
+
+

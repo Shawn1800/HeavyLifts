@@ -1,26 +1,44 @@
 
 import com.android.build.api.dsl.ApplicationExtension
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.ksp)
     id("com.google.gms.google-services")
+    kotlin("plugin.serialization") version "2.3.10"
+
 }
 
+// Load properties from local.properties or gradle.properties
+val props = Properties()
+val localPropsFile = rootProject.file("local.properties")
+if (localPropsFile.exists()) {
+    localPropsFile.inputStream().use { props.load(it) }
+}
 
 extensions.configure<ApplicationExtension>  {
-    namespace = "com.example.HeavyLifts"
+    namespace = "com.ghostbug.heavyLifts"
     compileSdk = 36
+    compileSdkExtension = 19
 
     defaultConfig {
-        applicationId = "com.example.demo103"
+        applicationId = "com.ghostbug.heavyliftsapp"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 6
+        versionName = "1.0.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        val supabaseUrl = props.getProperty("SUPABASE_URL") ?: ""
+        val supabaseKey = props.getProperty("SUPABASE_PUBLISHABLE_KEY") ?: ""
+        val googleClientId = props.getProperty("GOOGLE_CLIENT_ID") ?: ""
+
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"$supabaseKey\"")
+        buildConfigField("String", "GOOGLE_CLIENT_ID", "\"$googleClientId\"")
+
     }
 
     buildTypes {
@@ -39,8 +57,8 @@ extensions.configure<ApplicationExtension>  {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
-
 
     configurations.all {
         resolutionStrategy {
@@ -71,27 +89,25 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material:material-icons-extended:1.7.8")
-    val room_version = "2.8.4"
-    implementation("androidx.room:room-ktx:$room_version")
-    implementation("androidx.room:room-runtime:$room_version")
-    ksp("androidx.room:room-compiler:$room_version")
-
+    implementation("androidx.compose.ui:ui-text-google-fonts")
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     implementation(libs.androidx.material3.adaptive.navigation3)
     implementation(libs.kotlinx.serialization.core)
-
-    // Import the Firebase BoM
-    implementation(platform("com.google.firebase:firebase-bom:34.11.0"))
-
-
-    implementation("com.google.firebase:firebase-auth")
     implementation("com.google.android.gms:play-services-auth:21.5.1")
-    implementation("com.google.firebase:firebase-auth:24.0.1")
-    implementation("androidx.credentials:credentials:1.5.0")
-    implementation("androidx.credentials:credentials-play-services-auth:1.5.0")
+    implementation("androidx.credentials:credentials:1.6.0-rc02")
+    implementation("androidx.credentials:credentials-play-services-auth:1.6.0-rc02")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.2.0")
-
+    implementation(platform("io.github.jan-tennert.supabase:bom:3.4.1"))
+    implementation("io.github.jan-tennert.supabase:postgrest-kt")
+    implementation("io.github.jan-tennert.supabase:auth-kt")
+    implementation("io.ktor:ktor-client-android:3.4.1")
+    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
+    implementation("io.coil-kt:coil-compose:2.6.0")
+    implementation("androidx.core:core-splashscreen:1.0.1")
+    implementation("androidx.work:work-runtime-ktx:2.11.2")
+    implementation("androidx.compose.ui:ui-text-google-fonts:1.6.0")
 
 }
