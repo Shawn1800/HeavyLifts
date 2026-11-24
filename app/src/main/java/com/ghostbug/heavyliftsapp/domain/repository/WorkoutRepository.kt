@@ -13,4 +13,6 @@ interface WorkoutRepository {
     suspend fun getWorkoutByExerciseAndDate(exerciseId: Long, date: Long): List<WorkoutEntryEntity>
 
     suspend fun getWorkoutsByExercise(exerciseId: Long): List<WorkoutEntryEntity>
+
+    suspend fun getMaxWeightByExercise(exerciseId: Long): Float?
 }

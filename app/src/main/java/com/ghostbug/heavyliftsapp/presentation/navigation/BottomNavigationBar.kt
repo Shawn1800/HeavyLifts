@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
@@ -45,7 +46,7 @@ fun BottomNavigationBar(
             .fillMaxWidth()
             .background(HeavyLiftsColors.NavBackground)
             .navigationBarsPadding()
-            .padding(horizontal = 12.dp, vertical = 2.dp),
+            .padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 4.dp),
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -54,6 +55,7 @@ fun BottomNavigationBar(
                 modifier = Modifier.weight(1f),
                 label = labelFor(route),
                 icon = data.icon,
+                iconRotation = if (route == Route.HomeScreen) -45f else 0f,
                 isActive = route == selectedKey,
                 onClick = { onSelectKey(route) }
             )
@@ -67,6 +69,7 @@ private fun NavTabItem(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     isActive: Boolean,
+    iconRotation: Float,
     onClick: () -> Unit
 ) {
     val foreground by animateColorAsState(
@@ -82,7 +85,7 @@ private fun NavTabItem(
 
     Column(
         modifier = modifier
-            .height(56.dp)
+            .height(64.dp)
             .clip(RoundedCornerShape(20.dp))
             .clickable(onClick = onClick, role = Role.Tab)
             .semantics { selected = isActive },
@@ -100,7 +103,7 @@ private fun NavTabItem(
                 imageVector = icon,
                 contentDescription = null,
                 tint = foreground,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(20.dp).rotate(iconRotation)
             )
         }
         Spacer(modifier = Modifier.height(4.dp))
@@ -116,8 +119,9 @@ private fun NavTabItem(
 }
 
 private fun labelFor(route: NavKey): String = when (route) {
-    is Route.HomeScreen -> "Home"
-    is Route.LeaderBoards -> "Leaderboard"
-    is Route.ProfileScreen -> "Profile"
+    is Route.HomeScreen -> "Train"
+    is Route.ProgressScreen -> "Progress"
+    is Route.LeaderBoards -> "Ranks"
+    is Route.ProfileScreen -> "You"
     else -> ""
 }

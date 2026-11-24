@@ -26,6 +26,7 @@ class WorkoutRepositoryImpl(
         const val COLUMN_USER_ID = "user_id"
         const val COLUMN_DATE = "date"
         const val COLUMN_EXERCISE_ID = "exercise_id"
+        const val COLUMN_WEIGHT = "weight"
         const val COLUMN_ID = "id"
         const val EXERCISES_JOIN = "*, exercises(*)"
     }
@@ -113,6 +114,23 @@ class WorkoutRepositoryImpl(
                 }
                 .decodeList<WorkoutEntryEntityDto>()
                 .map { it.toDomain() }
+        }
+    }
+
+    override suspend fun getMaxWeightByExercise(exerciseId: Long): Float? {
+        val userId = currentUserId ?: return null
+        return withContext(Dispatchers.IO) {
+            postgrest.from(TABLE_WORKOUT_ENTRIES)
+                .select(Columns.list(COLUMN_WEIGHT)) {
+                    filter {
+                        eq(COLUMN_USER_ID, userId)
+                        eq(COLUMN_EXERCISE_ID, exerciseId)
+                    }
+                    order(COLUMN_WEIGHT, Order.DESCENDING)
+                    limit(1)
+                }
+                .decodeSingleOrNull<Map<String, Float>>()
+                ?.get(COLUMN_WEIGHT)
         }
     }
 

@@ -24,15 +24,9 @@ class LogWorkoutViewModel(
     private val oneRepMaxRepository: OneRepMaxRepository,
     private val oneRepMaxUseCase: OneRepMaxUseCase,
     private val exerciseRepository: ExerciseRepository,
-
 ) : ViewModel() {
-
-
-
-
     private val _state = MutableStateFlow(LogWorkoutState())
     val state: StateFlow<LogWorkoutState> = _state.asStateFlow()
-
     private val _uiEvent = MutableSharedFlow<LogWorkoutUiEvent>(extraBufferCapacity = 1)
     val uiEvent: SharedFlow<LogWorkoutUiEvent> = _uiEvent.asSharedFlow()
 

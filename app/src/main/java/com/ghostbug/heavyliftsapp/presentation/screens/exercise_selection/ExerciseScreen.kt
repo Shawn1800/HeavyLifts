@@ -119,13 +119,9 @@ fun ExerciseSelectionLayout(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(HeavyLiftsColors.Bg)
+            .background(HeavyLiftsColors.Bg),
     ) {
-        // ── Top bar ───────────────────────────────────────────────
         SelectionTopBar(onBack = onBack)
-
-        // ── Page heading ──────────────────────────────────────────
-        SelectionHeading()
 
         // ── Search field ──────────────────────────────────────────
         ExerciseSearchField(
@@ -158,9 +154,9 @@ private fun SelectionTopBar(onBack: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .padding( horizontal = 16.dp , vertical = 24.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Start
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         IconButton(
             onClick = onBack,
@@ -175,24 +171,7 @@ private fun SelectionTopBar(onBack: () -> Unit) {
                 modifier = Modifier.size(24.dp)
             )
         }
-    }
-}
 
-// ─── Page Heading ─────────────────────────────────────────────────────────────
-
-@Composable
-private fun SelectionHeading() {
-    Column(
-        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 18.dp, bottom = 20.dp)
-    ) {
-        Text(
-            text = "BUILD YOUR SESSION",
-            color = HeavyLiftsColors.AccentStrong,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.6.sp,
-            fontFamily = HeavyLiftsType.Body
-        )
         Text(
             text = "Choose exercise",
             color = HeavyLiftsColors.Fg1,

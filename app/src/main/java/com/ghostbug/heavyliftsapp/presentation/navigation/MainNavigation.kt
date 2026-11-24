@@ -1,10 +1,15 @@
 package com.ghostbug.heavyliftsapp.presentation.navigation
 
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -38,6 +43,9 @@ import com.ghostbug.heavyliftsapp.presentation.screens.log_workout.LogWorkoutVie
 import com.ghostbug.heavyliftsapp.presentation.screens.leaderboard.LeaderboardScreen
 import com.ghostbug.heavyliftsapp.presentation.screens.profile.ProfileScreen
 import com.ghostbug.heavyliftsapp.presentation.screens.profile.ProfileViewModel
+import com.ghostbug.heavyliftsapp.presentation.screens.progress.ProgressScreen
+import com.ghostbug.heavyliftsapp.presentation.screens.progress.ProgressViewModel
+import com.ghostbug.heavyliftsapp.presentation.screens.progress.ProgressViewModelFactory
 import com.ghostbug.heavyliftsapp.presentation.screens.root.AuthGate
 import com.ghostbug.heavyliftsapp.presentation.screens.root.RootViewModel
 import com.ghostbug.heavyliftsapp.presentation.screens.root.RootViewModelFactory
@@ -105,8 +113,13 @@ fun MainNavigation(
     val profileViewModel: ProfileViewModel = viewModel(
         factory = ProfileViewModelFactory(container.userProfileRepository, container.authRepository)
     )
-
-
+    val progressViewModel : ProgressViewModel = viewModel(
+        factory = ProgressViewModelFactory(
+            container.workoutRepository,
+            container.oneRepMaxRepository,
+            container.exerciseRepository,
+        )
+    )
     val navigationState = rememberNavigationState(
         startRoute = Route.HomeScreen,
         topLevelRoutes = TOP_LEVEL_DESTINATIONS.keys
@@ -146,31 +159,32 @@ fun MainNavigation(
         initialGateApplied = true
     }
 
-    val showBottomNav = navigationState.currentRoute.let { current ->
-        current !is Route.SignInScreen &&
-                current !is Route.SignUpScreen &&
-                current !is Route.UserProfileScreen1 &&
-                current !is Route.UserProfileScreen2 &&
-                current !is Route.UserProfileScreen3
-    }
+    val currentRoute = navigationState.currentRoute
+    val showBottomNav = currentRoute == navigationState.topLevelRoute
 
     Scaffold(
         modifier = modifier,
         bottomBar = {
-            if (showBottomNav) {
-                BottomNavigationBar(
-                    selectedKey = navigationState.topLevelRoute,
-                    onSelectKey = {
-                        navigator.navigate(it)
-                    }
-                )
+            if (showBottomNav || currentRoute == Route.ExerciseScreen) {
+                AnimatedVisibility(
+                    visible = showBottomNav,
+                    enter = expandVertically(expandFrom = Alignment.Top),
+                    exit = shrinkVertically(shrinkTowards = Alignment.Top)
+                ) {
+                    BottomNavigationBar(
+                        selectedKey = navigationState.topLevelRoute,
+                        onSelectKey = navigator::navigate
+                    )
+                }
             }
         }
     ) { innerPadding ->
+        val bottomPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding())
         NavDisplay(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = innerPadding.calculateBottomPadding()),
+                .padding(bottomPadding)
+                .consumeWindowInsets(bottomPadding),
 
             onBack = navigator::goBack,
 
@@ -337,6 +351,10 @@ fun MainNavigation(
 
                     entry<Route.LeaderBoards> {
                         LeaderboardScreen()
+                    }
+
+                    entry<Route.ProgressScreen> {
+                        ProgressScreen(progressViewModel = progressViewModel)
                     }
                 }
             )

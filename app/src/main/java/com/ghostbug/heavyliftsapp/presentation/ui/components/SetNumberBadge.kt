@@ -15,11 +15,11 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-private val SetBadgeShape = GenericShape { size, _ ->
+internal val SetBadgeShape = GenericShape { size, _ ->
     val centerX = size.width / 2f
     val centerY = size.height / 2f
     val outerRadius = minOf(size.width, size.height) / 2f
-    val innerRadius = outerRadius * 0.82f
+    val innerRadius = outerRadius * 0.89f
     val points = 12
 
     for (point in 0 until points * 2) {

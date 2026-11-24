@@ -38,23 +38,18 @@ class AppContainer(private val context: Context) {
             auth = supabase.auth
         )
     }
-
     val workoutRepository: WorkoutRepository by lazy {
         WorkoutRepositoryImpl(supabase.postgrest, supabase.auth)
     }
-
     val exerciseRepository: ExerciseRepository by lazy {
         ExerciseRepositoryImpl(supabase.postgrest, supabase.auth)
     }
-
     val oneRepMaxRepository: OneRepMaxRepository by lazy {
         OneRepMaxRepositoryImpl(supabase.postgrest, supabase.auth)
     }
-
     val authRepository: AuthRepository by lazy {
         AuthRepositoryImpl(auth = supabase.auth,supabase.postgrest)
     }
-
     val oneRepMaxUseCase: OneRepMaxUseCase by lazy {
         OneRepMaxUseCase(oneRepMaxRepository, workoutRepository)
     }
