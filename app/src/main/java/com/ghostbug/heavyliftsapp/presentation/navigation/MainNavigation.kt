@@ -40,7 +40,6 @@ import com.ghostbug.heavyliftsapp.presentation.screens.home.HomeViewModelFactory
 import com.ghostbug.heavyliftsapp.presentation.screens.log_workout.LogWorkoutScreen
 import com.ghostbug.heavyliftsapp.presentation.screens.log_workout.LogWorkoutViewModel
 import com.ghostbug.heavyliftsapp.presentation.screens.log_workout.LogWorkoutViewModelFactory
-import com.ghostbug.heavyliftsapp.presentation.screens.leaderboard.LeaderboardScreen
 import com.ghostbug.heavyliftsapp.presentation.screens.profile.ProfileScreen
 import com.ghostbug.heavyliftsapp.presentation.screens.profile.ProfileViewModel
 import com.ghostbug.heavyliftsapp.presentation.screens.progress.ProgressScreen
@@ -339,11 +338,6 @@ fun MainNavigation(
                                 navigator.navigate(Route.SignInScreen)
                             }
                         )
-                    }
-
-
-                    entry<Route.LeaderBoards> {
-                        LeaderboardScreen()
                     }
 
                     entry<Route.ProgressScreen> {

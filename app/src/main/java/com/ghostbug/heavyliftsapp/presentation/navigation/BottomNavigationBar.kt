@@ -121,7 +121,6 @@ private fun NavTabItem(
 private fun labelFor(route: NavKey): String = when (route) {
     is Route.HomeScreen -> "Train"
     is Route.ProgressScreen -> "Progress"
-//    is Route.LeaderBoards -> "Ranks"
     is Route.ProfileScreen -> "You"
     else -> ""
 }

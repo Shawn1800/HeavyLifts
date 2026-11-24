@@ -36,9 +36,4 @@ sealed interface Route : NavKey {
     data object ProfileScreen : Route {
 
     }
-
-    @Serializable
-    data object LeaderBoards : Route {
-
-    }
 }
