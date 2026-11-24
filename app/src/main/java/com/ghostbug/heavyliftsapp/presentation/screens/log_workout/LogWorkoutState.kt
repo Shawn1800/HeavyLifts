@@ -8,5 +8,9 @@ data class LogWorkoutState(
     val sets: List<WorkoutEntryEntity> = emptyList(),
     val exercise: ExerciseEntity? = null,
     val dateMillis: Long = 0L,
-    val isReadOnly: Boolean = false
-)
+    val isReadOnly: Boolean = false,
+    val isSaving: Boolean = false
+) {
+    val nextSetNumber: Int
+        get() = (sets.maxOfOrNull { it.sets } ?: 0) + 1
+}

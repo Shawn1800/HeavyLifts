@@ -8,6 +8,7 @@ import com.ghostbug.heavyliftsapp.domain.repository.ExerciseRepository
 import com.ghostbug.heavyliftsapp.domain.repository.OneRepMaxRepository
 import com.ghostbug.heavyliftsapp.domain.repository.WorkoutRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -29,8 +30,7 @@ class LogWorkoutViewModel(
     val state: StateFlow<LogWorkoutState> = _state.asStateFlow()
     private val _uiEvent = MutableSharedFlow<LogWorkoutUiEvent>(extraBufferCapacity = 1)
     val uiEvent: SharedFlow<LogWorkoutUiEvent> = _uiEvent.asSharedFlow()
-
-
+    private var loadJob: Job? = null
 
     fun onEvent(event: LogWorkoutEvent) {
         when (event) {
@@ -44,10 +44,9 @@ class LogWorkoutViewModel(
     }
 
     private fun handleSetExerciseById(event: LogWorkoutEvent.SetExerciseById) {
-        // allow reload if the exercise or date changed (VM lives for Activity lifetime)
-        if (_state.value.exercise?.id == event.exerciseId && _state.value.dateMillis == event.dateMillis) return
+        loadJob?.cancel()
         _state.update { it.copy(exercise = null, sets = emptyList(), dateMillis = event.dateMillis) }
-        viewModelScope.launch {
+        loadJob = viewModelScope.launch {
             try {
                 val exercise = exerciseRepository.getExerciseById(event.exerciseId)
                 if (exercise != null) {
@@ -65,9 +64,8 @@ class LogWorkoutViewModel(
         }
     }
 
-    // ...existing code...
-
     private fun handleAddSet(exerciseId: Long, weightStr: String, repsStr: String) {
+        if (_state.value.isSaving || _state.value.exercise?.id != exerciseId) return
         val weight = weightStr.toDoubleOrNull()
         val reps = repsStr.toIntOrNull()
 
@@ -77,13 +75,14 @@ class LogWorkoutViewModel(
         }
 
         _state.update { currentState ->
+            val setNumber = currentState.nextSetNumber
             val newSet = WorkoutEntryEntity(
-                id = -(currentState.sets.size + 1L),
+                id = -setNumber.toLong(),
                 exerciseId = exerciseId,
                 weight = weight.toFloat(),
                 reps = reps,
-                sets = currentState.sets.size + 1,
-                date = System.currentTimeMillis(),
+                sets = setNumber,
+                date = currentState.dateMillis,
                 userId = ""
             )
             currentState.copy(sets = currentState.sets + newSet)
@@ -91,6 +90,12 @@ class LogWorkoutViewModel(
     }
 
     private fun handleDeleteSet(id: Long) {
+        if (_state.value.isSaving) return
+        if (id < 0) {
+            _state.update { state -> state.copy(sets = state.sets.filter { it.id != id }) }
+            return
+        }
+
         viewModelScope.launch {
             try {
                 if (id > 0) workoutRepository.deleteSetById(id)
@@ -123,58 +128,63 @@ class LogWorkoutViewModel(
 
 
     private fun saveWorkout(currentWeightStr: String = "", currentRepsStr: String = "") {
-        viewModelScope.launch {
-            val currentState = _state.value
-            val dateToSave = getNormalizedDate(currentState.dateMillis)
+        val currentState = _state.value
+        val exerciseId = currentState.exercise?.id ?: return
+        if (currentState.isSaving) return
 
-            var allSets = currentState.sets
-            val curWeight = currentWeightStr.toDoubleOrNull()
-            val curReps = currentRepsStr.toIntOrNull()
+        val dateToSave = getNormalizedDate(currentState.dateMillis)
+        val curWeight = currentWeightStr.toDoubleOrNull()
+        val curReps = currentRepsStr.toIntOrNull()
 
-            if (curWeight != null && curReps != null && curWeight > 0 && curReps > 0) {
-                allSets = allSets + WorkoutEntryEntity(
-                    exerciseId = currentState.exercise?.id ?: 0,
+        val newSets = currentState.sets
+            .filter { it.id <= 0L }
+            .map { it.copy(id = 0L, date = dateToSave) }
+            .toMutableList()
+        if (curWeight != null && curReps != null && curWeight > 0 && curReps > 0) {
+            newSets.add(
+                WorkoutEntryEntity(
+                    exerciseId = exerciseId,
                     weight = curWeight.toFloat(),
                     reps = curReps,
-                    sets = allSets.size + 1,
+                    sets = currentState.nextSetNumber,
                     date = dateToSave,
-                    userId = "",
-                    id = -(allSets.size + 1L)
+                    userId = ""
                 )
-            }
+            )
+        }
 
-            if (allSets.isEmpty()) {
-                sendSnackbar("Add at least 1 set")
-                return@launch
-            }
+        if (newSets.isEmpty() && currentState.sets.isEmpty()) {
+            sendSnackbar("Add at least 1 set")
+            return
+        }
 
-            val finalizedSets = allSets.mapIndexed { index, entry ->
-                entry.copy(
-                    id = if (entry.id < 0) 0 else entry.id,
-                    sets = index + 1,
-                    date = dateToSave
-                )
-            }
-
-            val newSets = finalizedSets.filter { it.id == 0L }
-
+        _state.update { it.copy(isSaving = true) }
+        viewModelScope.launch {
             try {
                 if (newSets.isNotEmpty()) {
                     workoutRepository.insertWorkoutEntry(newSets)
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                if (e is CancellationException) throw e
                 sendSnackbar("Error saving: ${e.message}")
+                return@launch
+            } finally {
+                _state.update { it.copy(isSaving = false) }
             }
 
-            // Always navigate — user must never be stuck on this screen
             _uiEvent.emit(LogWorkoutUiEvent.NavBackToHome)
 
-            // 1RM recalc is best-effort — runs after navigation, never blocks save
-            try {
-                val exerciseId = currentState.exercise?.id ?: return@launch
-                oneRepMaxUseCase(exerciseId, dateToSave, allSets)
-            } catch (_: Exception) { }
+            if (newSets.isNotEmpty()) {
+                try {
+                    val allSets = currentState.sets.filter { it.id > 0L } + newSets
+                    oneRepMaxUseCase(exerciseId, dateToSave, allSets)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // The sets are saved even if personal records cannot be refreshed.
+                }
+            }
         }
     }
 

@@ -39,6 +39,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -111,13 +112,13 @@ private fun LogWorkoutContent(
 ) {
     var weightValue by remember { mutableDoubleStateOf(1.0) }
     var repsValue by remember { mutableIntStateOf(20) }
+    var inputChanged by remember { mutableStateOf(false) }
 
-    LaunchedEffect(state.exercise?.id) {
+    LaunchedEffect(state.exercise?.id, state.dateMillis) {
         val lastSet = state.sets.lastOrNull()
-        if (lastSet != null) {
-            weightValue = lastSet.weight.toDouble()
-            repsValue = lastSet.reps
-        }
+        weightValue = lastSet?.weight?.toDouble() ?: 1.0
+        repsValue = lastSet?.reps ?: 20
+        inputChanged = false
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -135,7 +136,7 @@ private fun LogWorkoutContent(
             )
 
             // ── Set Sub-Heading ─────────────────────────────────────
-            SectionHeading(text = "Set ${state.sets.size + 1}")
+            SectionHeading(text = "Set ${state.nextSetNumber}")
 
             Spacer(modifier = Modifier.height(10.dp))
 
@@ -153,10 +154,14 @@ private fun LogWorkoutContent(
                     valueStr = "%.1f".format(weightValue),
                     unitStr = "kg",
                     onDecrement = {
-                        if (weightValue > 0.5) weightValue -= 0.5
+                        if (weightValue > 0.5) {
+                            weightValue -= 0.5
+                            inputChanged = true
+                        }
                     },
                     onIncrement = {
                         weightValue += 0.5
+                        inputChanged = true
                     }
                 )
 
@@ -167,10 +172,14 @@ private fun LogWorkoutContent(
                     valueStr = repsValue.toString(),
                     unitStr = "reps",
                     onDecrement = {
-                        if (repsValue > 1) repsValue -= 1
+                        if (repsValue > 1) {
+                            repsValue -= 1
+                            inputChanged = true
+                        }
                     },
                     onIncrement = {
                         repsValue += 1
+                        inputChanged = true
                     }
                 )
             }
@@ -190,8 +199,9 @@ private fun LogWorkoutContent(
                                 reps = repsStr
                             )
                         )
+                        inputChanged = false
                     },
-                    enabled = state.exercise != null,
+                    enabled = state.exercise != null && !state.isSaving,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(64.dp),
@@ -240,6 +250,7 @@ private fun LogWorkoutContent(
                     state.sets.forEach { set ->
                         LoggedSetRow(
                             set = set,
+                            deleteEnabled = !state.isSaving,
                             onDelete = { onEvent(LogWorkoutEvent.DeleteSet(set.id)) }
                         )
                     }
@@ -256,11 +267,14 @@ private fun LogWorkoutContent(
         ) {
             Button(
                 onClick = {
-                    val weightStr = weightValue.toString()
-                    val repsStr = repsValue.toString()
-                    onEvent(LogWorkoutEvent.SaveWorkout(weightStr, repsStr))
+                    val saveEvent = if (state.sets.isEmpty() || inputChanged) {
+                        LogWorkoutEvent.SaveWorkout(weightValue.toString(), repsValue.toString())
+                    } else {
+                        LogWorkoutEvent.SaveWorkout()
+                    }
+                    onEvent(saveEvent)
                 },
-                enabled = state.exercise != null,
+                enabled = state.exercise != null && !state.isSaving,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(64.dp),
@@ -454,6 +468,7 @@ private fun StepperCard(
 @Composable
 private fun LoggedSetRow(
     set: WorkoutEntryEntity,
+    deleteEnabled: Boolean,
     onDelete: () -> Unit
 ) {
     Row(
@@ -487,6 +502,7 @@ private fun LoggedSetRow(
 
         IconButton(
             onClick = onDelete,
+            enabled = deleteEnabled,
             modifier = Modifier
                 .size(48.dp)
                 .clip(RoundedCornerShape(14.dp))

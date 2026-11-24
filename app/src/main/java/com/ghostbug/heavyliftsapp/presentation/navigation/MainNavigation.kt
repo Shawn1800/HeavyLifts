@@ -81,10 +81,7 @@ fun MainNavigation(
     )
 
     val exerciseViewModel: ExerciseViewModel = viewModel(
-        factory = ExerciseViewModelFactory(
-            container.exerciseRepository,
-            container.workoutRepository
-        )
+        factory = ExerciseViewModelFactory(container.exerciseRepository)
     )
 
     val logWorkoutViewModel: LogWorkoutViewModel = viewModel(
@@ -206,10 +203,6 @@ fun MainNavigation(
                             },
                             signUpViewModel = signUpViewModel,
                             onNavigateToExerciseSelection = {
-                                val selectedDate = homeViewModel.state.value.selectedDateMillis
-                                exerciseViewModel.setSelectedDate(
-                                    selectedDate ?: System.currentTimeMillis()
-                                )
                                 navigator.navigate(Route.ExerciseScreen)
                             },
                             onNavigateToLogIn = {
