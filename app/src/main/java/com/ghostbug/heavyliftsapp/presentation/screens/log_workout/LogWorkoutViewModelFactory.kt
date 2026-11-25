@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.ghostbug.heavyliftsapp.domain.repository.ExerciseRepository
 import com.ghostbug.heavyliftsapp.domain.repository.OneRepMaxRepository
 import com.ghostbug.heavyliftsapp.domain.repository.WorkoutRepository
+import com.ghostbug.heavyliftsapp.domain.usecase.GetExerciseProgressUseCase
 import com.ghostbug.heavyliftsapp.domain.usecase.OneRepMaxUseCase
 
 class LogWorkoutViewModelFactory(
@@ -12,6 +13,7 @@ class LogWorkoutViewModelFactory(
     private val oneRepMaxRepository: OneRepMaxRepository,
     private val oneRepMaxUseCase: OneRepMaxUseCase,
     private val exerciseRepository: ExerciseRepository,
+    private val getExerciseProgress: GetExerciseProgressUseCase,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (!modelClass.isAssignableFrom(LogWorkoutViewModel::class.java)) {
@@ -24,6 +26,7 @@ class LogWorkoutViewModelFactory(
             oneRepMaxRepository,
             oneRepMaxUseCase,
             exerciseRepository,
+            getExerciseProgress,
         ) as T
     }
 }

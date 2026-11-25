@@ -5,10 +5,9 @@ import com.ghostbug.heavyliftsapp.data.remote.dto.toDomain
 import com.ghostbug.heavyliftsapp.data.remote.dto.toDto
 import com.ghostbug.heavyliftsapp.domain.model.UserProfileEntity
 import com.ghostbug.heavyliftsapp.domain.repository.UserProfileRepository
-import com.ghostbug.heavyliftsapp.supabase
 import io.github.jan.supabase.auth.Auth
-import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.Postgrest
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.contentOrNull
@@ -25,22 +24,26 @@ class UserProfileRepositoryImpl(
     private val currentUserId: String?
         get() = auth.currentUserOrNull()?.id
 
-    override suspend fun getOwnProfile(): UserProfileEntity? {
+    override suspend fun getOwnProfile(): UserProfileEntity? = try {
+        fetchOwnProfile()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        null
+    }
+
+    private suspend fun fetchOwnProfile(): UserProfileEntity? {
         val uid = currentUserId ?: return null
-        try {
-            return withContext(Dispatchers.IO) {
-                postgrest.from(TABLE_USER_PROFILE)
-                    .select {
-                        filter {
-                            eq("user_id", uid)
-                        }
+        return withContext(Dispatchers.IO) {
+            postgrest.from(TABLE_USER_PROFILE)
+                .select {
+                    filter {
+                        eq("user_id", uid)
                     }
-                    .decodeList<UserProfileEntityDto>()
-                    .firstOrNull()
-                    ?.toDomain()
-            }
-        } catch (e: Exception) {
-            return null
+                }
+                .decodeList<UserProfileEntityDto>()
+                .firstOrNull()
+                ?.toDomain()
         }
     }
 
@@ -75,7 +78,7 @@ class UserProfileRepositoryImpl(
     }
 
     override suspend fun isProfileComplete(): Boolean {
-        return getOwnProfile() != null
+        return fetchOwnProfile() != null
     }
 
     override suspend fun isUserNameTaken(userName: String): Boolean {
@@ -102,7 +105,7 @@ class UserProfileRepositoryImpl(
     }
 
     override fun getGoogleProfilePic(): String? {
-        val user = supabase.auth.currentUserOrNull()
+        val user = auth.currentUserOrNull()
 
         // 2. Access the user metadata
         val metadata = user?.userMetadata

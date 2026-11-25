@@ -2,293 +2,209 @@ package com.ghostbug.heavyliftsapp.presentation.screens.user_onboarding.new_user
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ghostbug.heavyliftsapp.domain.model.Gender
-import com.ghostbug.heavyliftsapp.presentation.ui.theme.HeavyLiftsColors
 import com.ghostbug.heavyliftsapp.presentation.ui.theme.HeavyLiftsType
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun UserProfileScreen2(
     viewModel: UserProfileViewModel,
     onNext: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val navigateNext by rememberUpdatedState(onNext)
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(viewModel) {
         viewModel.uiEvent.collect { event ->
             when (event) {
-                UserProfileUiEvent.NavToScreen3 -> onNext()
-                is UserProfileUiEvent.SendSnackbar -> snackbarHostState.showSnackbar(event.message)
+                UserProfileUiEvent.NavToScreen3 -> navigateNext()
+                is UserProfileUiEvent.SendSnackbar -> this@LaunchedEffect.launch {
+                    snackbarHostState.showSnackbar(event.message)
+                }
                 else -> Unit
             }
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(HeavyLiftsColors.Bg)
+    OnboardingLayout(
+        step = 1,
+        title = "Body stats.",
+        subtitle = "Helps us personalize your experience.",
+        onBack = onBack,
+        snackbarHostState = snackbarHostState,
+        footer = {
+            OnboardingActions(
+                primaryLabel = "Continue",
+                onPrimary = { viewModel.onEvent(UserProfileEvent.NavtoScreen3) },
+                onBack = onBack,
+            )
+        },
     ) {
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 16.dp)
-        )
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp)
-                .padding(top = 56.dp, bottom = 32.dp)
-                .verticalScroll(rememberScrollState())
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = HeavyLiftsColors.Fg3
-                    )
-                }
-                Spacer(Modifier.weight(1f))
-                OnboardingStepProgress(current = 1)
-            }
-
-            Spacer(Modifier.height(44.dp))
-
-            Text(
-                text = "BODY STATS.",
-                color = HeavyLiftsColors.Fg1,
-                fontSize = 34.sp,
-                fontWeight = FontWeight.Black,
-                lineHeight = 38.sp,
-                letterSpacing = (-0.5).sp,
-                fontFamily = HeavyLiftsType.Display
-            )
-
-            Spacer(Modifier.height(10.dp))
-
-            Text(
-                text = "helps us personalize your experience.",
-                color = HeavyLiftsColors.Fg3,
-                fontSize = 11.sp,
-                fontFamily = HeavyLiftsType.Display,
-                letterSpacing = 0.5.sp
-            )
-
-            Spacer(Modifier.height(40.dp))
-
-            // ── Age ──────────────────────────────────────────────────────────
-            OnboardingSectionLabel("AGE")
-
-            OnboardingTextField(
-                value = state.age?.toString() ?: "",
-                onValueChange = { viewModel.onEvent(UserProfileEvent.OnAgeChanged(it)) },
-                placeholder = "e.g., 25",
-                error = state.ageError,
-                keyboardType = KeyboardType.Number,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(Modifier.height(28.dp))
-
-            // ── Height ───────────────────────────────────────────────────────
-            OnboardingSectionLabel("HEIGHT")
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.Top
-            ) {
+        Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            Column {
+                OnboardingSectionLabel("AGE")
                 OnboardingTextField(
-                    value = state.heightInputText,
+                    value = state.age?.toString().orEmpty(),
                     onValueChange = { input ->
-                        val digitsOnly = input.filter { it.isDigit() }
-                        if (digitsOnly.length <= 3) {
-                            viewModel.onEvent(UserProfileEvent.OnHeightChanged(input))
+                        if (input.length <= 3 && input.all(Char::isDigit)) {
+                            viewModel.onEvent(UserProfileEvent.OnAgeChanged(input))
                         }
                     },
-                    placeholder = if (state.heightUnit == HeightUnit.CM) "e.g., 170" else "e.g., 5'6",
-                    error = state.heightError,
-                    keyboardType = if (state.heightUnit == HeightUnit.FEET)
-                        KeyboardType.Number else KeyboardType.Decimal,
-                    modifier = Modifier.weight(1f)
-                )
-                OnboardingUnitToggle(
-                    options = listOf("cm", "ft"),
-                    selected = if (state.heightUnit == HeightUnit.CM) 0 else 1,
-                    onSelect = {
-                        viewModel.onEvent(
-                            UserProfileEvent.OnHeightUnitChanged(
-                                if (it == 0) HeightUnit.CM else HeightUnit.FEET
-                            )
-                        )
-                    }
+                    placeholder = "e.g., 25",
+                    error = state.ageError,
+                    keyboardType = KeyboardType.Number,
+                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Age" },
                 )
             }
 
-            Spacer(Modifier.height(28.dp))
+            Column {
+                OnboardingSectionLabel("HEIGHT")
 
-            // ── Weight ───────────────────────────────────────────────────────
-            OnboardingSectionLabel("WEIGHT")
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                OnboardingTextField(
-                    value = state.weightInputText,
-                    onValueChange = { viewModel.onEvent(UserProfileEvent.OnUserWeightChanged(it)) },
-                    placeholder = if (state.weightUnit == WeightUnit.KG) "e.g., 70" else "e.g., 154",
-                    error = state.weightError,
-                    keyboardType = KeyboardType.Decimal,
-                    modifier = Modifier.weight(1f)
-                )
-                OnboardingUnitToggle(
-                    options = listOf("kg", "lbs"),
-                    selected = if (state.weightUnit == WeightUnit.KG) 0 else 1,
-                    onSelect = {
-                        viewModel.onEvent(
-                            UserProfileEvent.OnWeightUnitChanged(
-                                if (it == 0) WeightUnit.KG else WeightUnit.LBS
-                            )
-                        )
-                    }
-                )
-            }
-
-            Spacer(Modifier.height(28.dp))
-
-            // ── Gender ───────────────────────────────────────────────────────
-            OnboardingSectionLabel("GENDER")
-
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Gender.entries.forEach { gender ->
-                    val selected = state.gender == gender
-                    val label = gender.name
-                        .lowercase()
-                        .replace("_", " ")
-                        .replaceFirstChar { it.uppercase() }
-
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                color = if (selected) HeavyLiftsColors.Fg1
-                                else Color.Transparent,
-                                shape = RoundedCornerShape(2.dp)
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = if (selected) HeavyLiftsColors.Fg1
-                                else HeavyLiftsColors.BorderSubtle,
-                                shape = RoundedCornerShape(2.dp)
-                            )
-                            .clickable { viewModel.onEvent(UserProfileEvent.OnGenderChanged(gender)) }
-                            .padding(horizontal = 16.dp, vertical = 9.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = label,
-                            color = if (selected) HeavyLiftsColors.Bg else HeavyLiftsColors.Fg3,
-                            fontSize = 11.sp,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                            fontFamily = HeavyLiftsType.Display,
-                            letterSpacing = 0.5.sp
-                        )
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(48.dp))
-
-            // ── Buttons ───────────────────────────────────────────────────────
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(52.dp)
-                        .border(1.dp, HeavyLiftsColors.BorderSubtle, RoundedCornerShape(2.dp))
-                        .clickable { onBack() },
-                    contentAlignment = Alignment.Center
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.Top,
                 ) {
-                    Text(
-                        text = "BACK",
-                        color = HeavyLiftsColors.Fg3,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 3.sp,
-                        fontFamily = HeavyLiftsType.Display
+                    val inCentimeters = state.heightUnit == HeightUnit.CM
+                    OnboardingTextField(
+                        value = state.heightInputText,
+                        onValueChange = { input ->
+                            if (inCentimeters || input.count(Char::isDigit) <= 3) {
+                                viewModel.onEvent(UserProfileEvent.OnHeightChanged(input))
+                            }
+                        },
+                        placeholder = if (inCentimeters) "e.g., 170" else "e.g., 5'6",
+                        error = state.heightError,
+                        keyboardType = if (inCentimeters) KeyboardType.Decimal else KeyboardType.Number,
+                        modifier = Modifier.weight(1f).semantics { contentDescription = "Height" },
                     )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(52.dp)
-                        .background(HeavyLiftsColors.Fg1, RoundedCornerShape(2.dp))
-                        .clickable { viewModel.onEvent(UserProfileEvent.NavtoScreen3) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "CONTINUE",
-                        color = HeavyLiftsColors.Bg,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 3.sp,
-                        fontFamily = HeavyLiftsType.Display
+                    OnboardingUnitToggle(
+                        options = listOf("cm", "ft"),
+                        selected = if (inCentimeters) 0 else 1,
+                        onSelect = {
+                            val unit = if (it == 0) HeightUnit.CM else HeightUnit.FEET
+                            viewModel.onEvent(UserProfileEvent.OnHeightUnitChanged(unit))
+                        },
                     )
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Column {
+                OnboardingSectionLabel("WEIGHT")
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    val inKilograms = state.weightUnit == WeightUnit.KG
+                    OnboardingTextField(
+                        value = state.weightInputText,
+                        onValueChange = { viewModel.onEvent(UserProfileEvent.OnUserWeightChanged(it)) },
+                        placeholder = if (inKilograms) "e.g., 70" else "e.g., 154",
+                        error = state.weightError,
+                        keyboardType = KeyboardType.Decimal,
+                        modifier = Modifier.weight(1f).semantics { contentDescription = "Weight" },
+                    )
+                    OnboardingUnitToggle(
+                        options = listOf("kg", "lbs"),
+                        selected = if (inKilograms) 0 else 1,
+                        onSelect = {
+                            val unit = if (it == 0) WeightUnit.KG else WeightUnit.LBS
+                            viewModel.onEvent(UserProfileEvent.OnWeightUnitChanged(unit))
+                        },
+                    )
+                }
+            }
+
+            Column {
+                OnboardingSectionLabel("GENDER")
+                GenderOptions(
+                    selected = state.gender,
+                    onSelect = { viewModel.onEvent(UserProfileEvent.OnGenderChanged(it)) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun GenderOptions(selected: Gender?, onSelect: (Gender) -> Unit) {
+    val shape = RoundedCornerShape(14.dp)
+    FlowRow(
+        modifier = Modifier.fillMaxWidth().selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Gender.entries.forEach { gender ->
+            val isSelected = gender == selected
+            val label = when (gender) {
+                Gender.MALE -> "Male"
+                Gender.FEMALE -> "Female"
+                Gender.OTHER -> "Other"
+                Gender.PREFER_NOT_TO_SAY -> "Prefer not to say"
+            }
+            Row(
+                modifier = Modifier
+                    .clip(shape)
+                    .background(if (isSelected) OnboardingColors.Selected else OnboardingColors.Field)
+                    .border(1.dp, if (isSelected) OnboardingColors.UnitBlue else OnboardingColors.Border, shape)
+                    .selectable(selected = isSelected, role = Role.RadioButton) { onSelect(gender) }
+                    .defaultMinSize(minHeight = 48.dp)
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (isSelected) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = null,
+                        tint = OnboardingColors.UnitBlue,
+                        modifier = Modifier.size(15.dp),
+                    )
+                }
+                Text(
+                    text = label,
+                    color = if (isSelected) OnboardingColors.Ink else OnboardingColors.Muted,
+                    fontFamily = HeavyLiftsType.Body,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                    fontSize = 13.sp,
+                )
+            }
         }
     }
 }

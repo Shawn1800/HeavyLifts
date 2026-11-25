@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">HeavyLifts</string>
+    <string name="auth_reconnecting">Reconnecting to your account…</string>
+    <string name="auth_profile_unavailable">Couldn’t load your profile.</string>
+    <string name="auth_retry">Try again</string>
+    <string name="home">Home</string>
+    <string name="nav_progress">Progress</string>
+    <string name="nav_you">You</string>
+    <string name="add_exercise">Add exercise</string>
 </resources>

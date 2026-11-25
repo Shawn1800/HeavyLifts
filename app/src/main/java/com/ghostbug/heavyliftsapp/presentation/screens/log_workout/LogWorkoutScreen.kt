@@ -2,6 +2,9 @@ package com.ghostbug.heavyliftsapp.presentation.screens.log_workout
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +19,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -32,21 +38,31 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableDoubleStateOf
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -56,10 +72,15 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ghostbug.heavyliftsapp.domain.model.WorkoutEntryEntity
+import com.ghostbug.heavyliftsapp.presentation.screens.progress.ExerciseProgressSection
 import com.ghostbug.heavyliftsapp.presentation.ui.components.SetNumberBadge
 import com.ghostbug.heavyliftsapp.presentation.ui.theme.HeavyLiftsColors
 import com.ghostbug.heavyliftsapp.presentation.ui.theme.HeavyLiftsType
 import kotlinx.coroutines.launch
+import java.math.BigDecimal
+
+private val WeightInputPattern = Regex("[0-9]*(?:[.,][0-9]*)?")
+private val WeightStep = BigDecimal("0.5")
 
 @Composable
 fun LogWorkoutScreen(
@@ -91,13 +112,16 @@ fun LogWorkoutScreen(
 
     Scaffold(
         containerColor = HeavyLiftsColors.Bg,
+        contentWindowInsets = WindowInsets.safeDrawing,
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         LogWorkoutContent(
             state = state,
             onBack = onBack,
             onEvent = logWorkoutViewModel::onEvent,
-            modifier = Modifier.padding(paddingValues)
+            modifier = Modifier
+                .padding(paddingValues)
+                .consumeWindowInsets(paddingValues)
         )
     }
 }
@@ -109,24 +133,59 @@ private fun LogWorkoutContent(
     onEvent: (LogWorkoutEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var weightValue by remember { mutableDoubleStateOf(1.0) }
-    var repsValue by remember { mutableIntStateOf(20) }
+    var weightValue by remember { mutableStateOf(TextFieldValue("1.0")) }
+    var repsValue by remember { mutableStateOf(TextFieldValue("20")) }
+    var inputChanged by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    val repsFocusRequester = remember { FocusRequester() }
+    val canEdit = state.exercise != null && !state.isSaving
 
-    LaunchedEffect(state.exercise?.id) {
+    LaunchedEffect(state.exercise?.id, state.dateMillis) {
         val lastSet = state.sets.lastOrNull()
-        if (lastSet != null) {
-            weightValue = lastSet.weight.toDouble()
-            repsValue = lastSet.reps
+        weightValue = TextFieldValue(lastSet?.weight?.toString() ?: "1.0")
+        repsValue = TextFieldValue(lastSet?.reps?.toString() ?: "20")
+        inputChanged = false
+    }
+
+    fun updateWeight(value: TextFieldValue) {
+        if (WeightInputPattern.matches(value.text)) {
+            inputChanged = inputChanged || value.text != weightValue.text
+            weightValue = value
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    fun updateReps(value: TextFieldValue) {
+        if (value.text.all { it in '0'..'9' }) {
+            inputChanged = inputChanged || value.text != repsValue.text
+            repsValue = value
+        }
+    }
+
+    fun stepWeight(delta: BigDecimal) {
+        val current = weightValue.text.replace(',', '.').toBigDecimalOrNull() ?: BigDecimal.ZERO
+        val next = current + delta
+        if (next.signum() > 0) {
+            val text = next.toPlainString()
+            updateWeight(TextFieldValue(text, selection = TextRange(text.length)))
+        }
+    }
+
+    fun stepReps(delta: Int) {
+        val current = repsValue.text.toIntOrNull() ?: 0
+        val next = current.toLong() + delta
+        if (next in 1L..Int.MAX_VALUE.toLong()) {
+            val text = next.toString()
+            updateReps(TextFieldValue(text, selection = TextRange(text.length)))
+        }
+    }
+
+    Column(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .background(HeavyLiftsColors.Bg)
+                .weight(1f)
+                .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(bottom = 112.dp)
+                .padding(bottom = 24.dp)
         ) {
             // ── Top Bar ─────────────────────────────────────────────
             LogTopBar(
@@ -135,7 +194,7 @@ private fun LogWorkoutContent(
             )
 
             // ── Set Sub-Heading ─────────────────────────────────────
-            SectionHeading(text = "Set ${state.sets.size + 1}")
+            SectionHeading(text = "Set ${state.nextSetNumber}")
 
             Spacer(modifier = Modifier.height(10.dp))
 
@@ -150,28 +209,37 @@ private fun LogWorkoutContent(
                 StepperCard(
                     modifier = Modifier.weight(1f),
                     label = "WEIGHT",
-                    valueStr = "%.1f".format(weightValue),
+                    value = weightValue,
+                    onValueChange = ::updateWeight,
+                    fieldLabel = "Weight in kilograms",
                     unitStr = "kg",
-                    onDecrement = {
-                        if (weightValue > 0.5) weightValue -= 0.5
-                    },
-                    onIncrement = {
-                        weightValue += 0.5
-                    }
+                    enabled = canEdit,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(onNext = { repsFocusRequester.requestFocus() }),
+                    onDecrement = { stepWeight(-WeightStep) },
+                    onIncrement = { stepWeight(WeightStep) }
                 )
 
                 // Reps Stepper Card
                 StepperCard(
                     modifier = Modifier.weight(1f),
                     label = "REPS",
-                    valueStr = repsValue.toString(),
+                    value = repsValue,
+                    onValueChange = ::updateReps,
+                    fieldLabel = "Reps",
                     unitStr = "reps",
-                    onDecrement = {
-                        if (repsValue > 1) repsValue -= 1
-                    },
-                    onIncrement = {
-                        repsValue += 1
-                    }
+                    enabled = canEdit,
+                    fieldModifier = Modifier.focusRequester(repsFocusRequester),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                    onDecrement = { stepReps(-1) },
+                    onIncrement = { stepReps(1) }
                 )
             }
 
@@ -181,17 +249,14 @@ private fun LogWorkoutContent(
             Box(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Button(
                     onClick = {
-                        val weightStr = weightValue.toString()
-                        val repsStr = repsValue.toString()
-                        onEvent(
-                            LogWorkoutEvent.OnAddingSets(
-                                exerciseId = state.exercise?.id ?: 0,
-                                weight = weightStr,
-                                reps = repsStr
-                            )
-                        )
+                        val exercise = state.exercise ?: return@Button
+                        val weight = weightValue.text
+                        val reps = repsValue.text
+                        focusManager.clearFocus()
+                        onEvent(LogWorkoutEvent.OnAddingSets(exercise.id, weight, reps))
+                        if (parseSetInput(weight, reps) != null) inputChanged = false
                     },
-                    enabled = state.exercise != null,
+                    enabled = canEdit,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(64.dp),
@@ -240,27 +305,39 @@ private fun LogWorkoutContent(
                     state.sets.forEach { set ->
                         LoggedSetRow(
                             set = set,
+                            deleteEnabled = !state.isSaving,
                             onDelete = { onEvent(LogWorkoutEvent.DeleteSet(set.id)) }
                         )
                     }
                 }
+            }
+
+            if (state.exercise != null) {
+                ExerciseProgressSection(
+                    progress = state.progress,
+                    onRetry = { onEvent(LogWorkoutEvent.RetryProgress) },
+                    modifier = Modifier.padding(start = 16.dp, top = 24.dp, end = 16.dp)
+                )
             }
         }
 
         // ── Bottom Fixed Primary Action Button ("Finish lift →") ──
         Box(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, bottom = 28.dp)
+                .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 16.dp)
         ) {
             Button(
                 onClick = {
-                    val weightStr = weightValue.toString()
-                    val repsStr = repsValue.toString()
-                    onEvent(LogWorkoutEvent.SaveWorkout(weightStr, repsStr))
+                    focusManager.clearFocus()
+                    val saveEvent = if (state.sets.isEmpty() || inputChanged) {
+                        LogWorkoutEvent.SaveWorkout(weightValue.text, repsValue.text)
+                    } else {
+                        LogWorkoutEvent.SaveWorkout()
+                    }
+                    onEvent(saveEvent)
                 },
-                enabled = state.exercise != null,
+                enabled = canEdit,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(64.dp),
@@ -360,11 +437,24 @@ private fun SectionHeading(text: String) {
 private fun StepperCard(
     modifier: Modifier = Modifier,
     label: String,
-    valueStr: String,
+    value: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit,
+    fieldLabel: String,
     unitStr: String,
+    enabled: Boolean,
+    keyboardOptions: KeyboardOptions,
+    keyboardActions: KeyboardActions,
     onDecrement: () -> Unit,
-    onIncrement: () -> Unit
+    onIncrement: () -> Unit,
+    fieldModifier: Modifier = Modifier
 ) {
+    var focused by remember { mutableStateOf(false) }
+    LaunchedEffect(focused) {
+        if (focused) {
+            onValueChange(value.copy(selection = TextRange(0, value.text.length)))
+        }
+    }
+
     Column(
         modifier = modifier
             .background(HeavyLiftsColors.BgOverlay, RoundedCornerShape(36.dp))
@@ -382,15 +472,27 @@ private fun StepperCard(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        Text(
-            text = valueStr,
-            color = HeavyLiftsColors.Fg1,
-            fontFamily = HeavyLiftsType.Display,
-            fontWeight = FontWeight.ExtraBold,
-            fontSize = 60.sp,
-            lineHeight = 64.sp,
-            letterSpacing = (-2).sp,
-            textAlign = TextAlign.Center
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = fieldModifier
+                .fillMaxWidth()
+                .background(HeavyLiftsColors.BgChip, RoundedCornerShape(14.dp))
+                .onFocusChanged { focused = it.isFocused }
+                .padding(horizontal = 6.dp, vertical = 8.dp)
+                .semantics { contentDescription = fieldLabel },
+            enabled = enabled,
+            textStyle = TextStyle(
+                color = HeavyLiftsColors.Fg1,
+                fontFamily = HeavyLiftsType.Display,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 38.sp,
+                textAlign = TextAlign.Center
+            ),
+            keyboardOptions = keyboardOptions,
+            keyboardActions = keyboardActions,
+            singleLine = true,
+            cursorBrush = SolidColor(HeavyLiftsColors.NavyStrong)
         )
 
         Spacer(modifier = Modifier.height(2.dp))
@@ -417,7 +519,7 @@ private fun StepperCard(
                     .height(56.dp)
                     .clip(RoundedCornerShape(28.dp, 10.dp, 10.dp, 28.dp))
                     .background(HeavyLiftsColors.BgChip)
-                    .clickable(onClick = onDecrement),
+                    .clickable(enabled = enabled, onClick = onDecrement),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -435,7 +537,7 @@ private fun StepperCard(
                     .height(56.dp)
                     .clip(RoundedCornerShape(10.dp, 28.dp, 28.dp, 10.dp))
                     .background(HeavyLiftsColors.Accent)
-                    .clickable(onClick = onIncrement),
+                    .clickable(enabled = enabled, onClick = onIncrement),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -454,6 +556,7 @@ private fun StepperCard(
 @Composable
 private fun LoggedSetRow(
     set: WorkoutEntryEntity,
+    deleteEnabled: Boolean,
     onDelete: () -> Unit
 ) {
     Row(
@@ -487,6 +590,7 @@ private fun LoggedSetRow(
 
         IconButton(
             onClick = onDelete,
+            enabled = deleteEnabled,
             modifier = Modifier
                 .size(48.dp)
                 .clip(RoundedCornerShape(14.dp))

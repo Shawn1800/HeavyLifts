@@ -3,7 +3,6 @@ package com.ghostbug.heavyliftsapp.presentation.screens.exercise_selection
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ghostbug.heavyliftsapp.domain.repository.ExerciseRepository
-import com.ghostbug.heavyliftsapp.domain.repository.WorkoutRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -23,7 +22,6 @@ import kotlinx.coroutines.launch
 @OptIn(FlowPreview::class)
 class ExerciseViewModel(
     private val repository: ExerciseRepository,
-    private val workoutRepository: WorkoutRepository
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -32,12 +30,6 @@ class ExerciseViewModel(
 
     private val _uiEvent = MutableSharedFlow<ExerciseUiEvent>()
     val uiEvent = _uiEvent.asSharedFlow()
-
-    private var selectedDateMillis: Long = System.currentTimeMillis()
-
-    fun setSelectedDate(millis: Long) {
-        selectedDateMillis = millis
-    }
 
     // ── UI State ──────────────────────────────────────────────────────────
 
@@ -103,21 +95,7 @@ class ExerciseViewModel(
             }
             is ExerciseEvent.OnAddExercise -> {
                 viewModelScope.launch {
-                    try {
-                        val existingEntries = workoutRepository
-                            .getWorkoutByExerciseAndDate(event.exercise.id, selectedDateMillis)
-
-                        if (existingEntries.isNotEmpty()) {
-                            _uiEvent.emit(ExerciseUiEvent.SendSnackbar(
-                                "${event.exercise.exerciseName} is already added for today"
-                            ))
-                        } else {
-                            _uiEvent.emit(ExerciseUiEvent.AddExercise(exercise = event.exercise))
-                        }
-                    } catch (e: Exception) {
-                        if (e is CancellationException) throw e
-                        _uiEvent.emit(ExerciseUiEvent.SendSnackbar("Error: ${e.message}"))
-                    }
+                    _uiEvent.emit(ExerciseUiEvent.AddExercise(exercise = event.exercise))
                 }
             }
         }

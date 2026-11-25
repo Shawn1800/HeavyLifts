@@ -55,8 +55,6 @@ fun SignInScreen(
     state: SignInState,
     onEvent: (SignInEvent) -> Unit,
     uiEvent: SharedFlow<SignInUiEvent>,
-    onNavigateToHome: () -> Unit,
-    onNavigateToOnboarding: () -> Unit,
     onNavigateToSignUp: () -> Unit,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -65,8 +63,6 @@ fun SignInScreen(
     LaunchedEffect(Unit) {
         uiEvent.collect { event ->
             when (event) {
-                is SignInUiEvent.NavigateToHome       -> onNavigateToHome()
-                is SignInUiEvent.NavigateToOnboarding -> onNavigateToOnboarding()
                 SignInUiEvent.NavigateToSignUp        -> onNavigateToSignUp()
                 is SignInUiEvent.ShowError ->
                     coroutineScope.launch { snackbarHostState.showSnackbar(event.message) }

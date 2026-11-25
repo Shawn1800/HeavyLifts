@@ -6,9 +6,12 @@ import kotlinx.datetime.todayIn
 import kotlin.time.Clock
 
 data class HomeState(
-    val selectedDate: LocalDate =Clock.System.todayIn(TimeZone.currentSystemDefault()),
+    val selectedDate: LocalDate = Clock.System.todayIn(TimeZone.currentSystemDefault()),
     val selectedDateMillis: Long? = null,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val workouts: List<GroupedWorkout> = emptyList()
-)
+    val workouts: List<GroupedWorkout> = emptyList(),
+) {
+    val isTodaySelected: Boolean
+        get() = selectedDate == Clock.System.todayIn(TimeZone.currentSystemDefault())
+}

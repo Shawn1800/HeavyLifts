@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import kotlin.time.Clock
 
 class UserProfileViewModel(
@@ -42,6 +43,7 @@ class UserProfileViewModel(
                 UserProfileState(
                     profilePic = googlePic,
                     userName = existingProfile?.userName ?: "",
+                    isUserNameAvailable = !existingProfile?.userName.isNullOrBlank(),
                     age = existingProfile?.age,
                     height = existingProfile?.height,
                     userWeight = existingProfile?.userWeight,
@@ -50,21 +52,9 @@ class UserProfileViewModel(
                     country = existingProfile?.country,
                     heightUnit = it.heightUnit,
                     weightUnit = it.weightUnit,
-                    weightInputText = existingProfile?.userWeight?.let { w ->
-                        if (it.weightUnit == WeightUnit.LBS) "%.1f".format(w * 2.20462f)
-                        else "%.1f".format(w)
-                    } ?: ""
+                    heightInputText = formatHeightInput(existingProfile?.height, it.heightUnit),
+                    weightInputText = formatWeightInput(existingProfile?.userWeight, it.weightUnit)
                 )
-            }
-
-            val initialHeight = _state.value.height
-            if (initialHeight != null) {
-                val formattedHeight = if (_state.value.heightUnit == HeightUnit.FEET) {
-                    cmToFeetInches(initialHeight)
-                } else {
-                    "%.1f".format(initialHeight)
-                }
-                _state.update { it.copy(heightInputText = formattedHeight) }
             }
         }
     }
@@ -101,61 +91,36 @@ class UserProfileViewModel(
         _state.update { it.copy(age = age, ageError = error) }
     }
 
- fun handleHeightChanged(input: String) {
+    private fun handleHeightChanged(input: String) {
         val unit = _state.value.heightUnit
-
-        if (unit == HeightUnit.CM) {
-            val heightInCm = input.toFloatOrNull()
-            val error = when {
-                input.isBlank() -> null
-                heightInCm == null -> "Please enter a valid height"
-                heightInCm < 91.44f -> "Height must be more than 3 feet"
-                heightInCm > 272f -> "Please enter a valid height"
-                else -> null
-            }
-            _state.update { it.copy(heightInputText = input, height = heightInCm, heightError = error) }
-            return
+        val digits = if (unit == HeightUnit.FEET) input.filter(Char::isDigit) else ""
+        val feet = digits.take(1).toIntOrNull()
+        val inches = digits.drop(1).toIntOrNull() ?: 0
+        val formatted = if (unit == HeightUnit.FEET && digits.length > 1) {
+            "${digits.first()}'${digits.drop(1)}"
+        } else {
+            if (unit == HeightUnit.FEET) digits else input
         }
-
-        // FEET mode — auto format
-        // strip everything except digits
-        val digitsOnly = input.filter { it.isDigit() }
-
-        val formatted = when {
-            digitsOnly.isEmpty() -> ""
-            digitsOnly.length == 1 -> digitsOnly // just "5", still typing feet
-            else -> {
-                // first digit = feet, rest = inches (max 2 digits)
-                val feet = digitsOnly.take(1)
-                val inches = digitsOnly.drop(1).take(2)
-                "$feet'$inches"
+        val heightInCm = when (unit) {
+            HeightUnit.CM -> input.replace(',', '.').toFloatOrNull()?.takeIf(Float::isFinite)
+            HeightUnit.FEET -> feet?.takeIf { inches in 0..11 }?.let {
+                (it * 12 + inches) * CENTIMETERS_PER_INCH
             }
         }
-
-        val heightInCm = if (digitsOnly.length >= 2) {
-            val feet = digitsOnly.take(1).toFloatOrNull() ?: 0f
-            val inches = digitsOnly.drop(1).take(2).toFloatOrNull() ?: 0f
-            if (inches >= 12f) null // invalid inches
-            else ((feet * 12f) + inches) * 2.54f
-        } else null
-
         val error = when {
             formatted.isBlank() -> null
-            digitsOnly.length == 1 -> null // still typing, no error yet
-            heightInCm == null -> "Inches must be 0–11"
+            unit == HeightUnit.FEET && inches !in 0..11 -> "Inches must be 0–11"
+            heightInCm == null -> "Please enter a valid height"
             heightInCm < 91.44f -> "Height must be more than 3 feet"
             heightInCm > 272f -> "Please enter a valid height"
             else -> null
         }
-
         _state.update { it.copy(heightInputText = formatted, height = heightInCm, heightError = error) }
     }
 
-
     private fun handleWeightChanged(input: String) {
-        val value = input.toFloatOrNull()
+        val value = input.replace(',', '.').toFloatOrNull()?.takeIf(Float::isFinite)
         val unit = _state.value.weightUnit
-
         val error = when {
             input.isBlank() -> null
             value == null -> "Please enter a valid weight"
@@ -165,56 +130,44 @@ class UserProfileViewModel(
             unit == WeightUnit.LBS && value > 661f -> "Weight must be less than 661 lbs (300 kg)"
             else -> null
         }
-
-        // always store internally in KG
-        val weightInKg = if (value != null) {
-            if (unit == WeightUnit.LBS) value * 0.453592f else value
-        } else null
-
+        val weightInKg = value?.let { if (unit == WeightUnit.LBS) it * KILOGRAMS_PER_POUND else it }
         _state.update { it.copy(userWeight = weightInKg, weightInputText = input, weightError = error) }
     }
 
     private fun handleHeightUnitChanged(unit: HeightUnit) {
-        val currentCm = _state.value.height
-
-        val convertedInput = when (unit) {
-            HeightUnit.FEET -> {
-                if (currentCm != null && currentCm > 0f) {
-                    // convert cm to feet'inches formatted string
-                    val totalInches = (currentCm / 2.54f).toInt()
-                    val feet = totalInches / 12
-                    val inches = totalInches % 12
-                    // store as raw digits so handleHeightChanged formats it
-                    "$feet$inches"  // e.g "56" which handleHeightChanged turns into "5'6"
-                } else ""
-            }
-            HeightUnit.CM -> {
-                if (currentCm != null && currentCm > 0f) {
-                    "%.1f".format(currentCm)
-                } else ""
-            }
+        _state.update { state ->
+            if (state.heightUnit == unit) return@update state
+            state.copy(
+                heightUnit = unit,
+                heightInputText = formatHeightInput(state.height, unit),
+                heightError = state.height?.let { state.heightError }
+            )
         }
-
-        // update unit first, then run through handler to format properly
-        _state.update { it.copy(heightUnit = unit) }
-        handleHeightChanged(convertedInput)
     }
 
     private fun handleWeightUnitChanged(unit: WeightUnit) {
-        val currentInput = _state.value.weightInputText
-        val currentValue = currentInput.toFloatOrNull()
+        _state.update { state ->
+            if (state.weightUnit == unit) return@update state
+            state.copy(
+                weightUnit = unit,
+                weightInputText = formatWeightInput(state.userWeight, unit),
+                weightError = state.userWeight?.let { state.weightError }
+            )
+        }
+    }
 
-        val convertedInput = if (currentValue != null) {
-            when (unit) {
-                WeightUnit.LBS -> if (_state.value.weightUnit == WeightUnit.KG)
-                    "%.1f".format(currentValue * 2.20462f) else currentInput
-                WeightUnit.KG -> if (_state.value.weightUnit == WeightUnit.LBS)
-                    "%.1f".format(currentValue * 0.453592f) else currentInput
-            }
-        } else currentInput
+    private fun formatHeightInput(height: Float?, unit: HeightUnit): String {
+        if (height == null || !height.isFinite()) return ""
+        return when (unit) {
+            HeightUnit.CM -> "%.1f".format(height)
+            HeightUnit.FEET -> cmToFeetInches(height).removeSuffix("\"")
+        }
+    }
 
-        _state.update { it.copy(weightUnit = unit, weightInputText = convertedInput) }
-        handleWeightChanged(convertedInput)
+    private fun formatWeightInput(weight: Float?, unit: WeightUnit): String {
+        if (weight == null || !weight.isFinite()) return ""
+        val value = if (unit == WeightUnit.LBS) weight / KILOGRAMS_PER_POUND else weight
+        return "%.1f".format(value)
     }
 
     private fun handleGenderChanged(gender: Gender) {
@@ -222,24 +175,29 @@ class UserProfileViewModel(
     }
 
     private fun handleUserNameChanged(userName: String) {
+        checkNameJob?.cancel()
+        val trimmedName = userName.trim()
         _state.update {
             it.copy(
                 userName = userName,
+                isUserNameAvailable = false,
                 userNameError = when {
-                    userName.isBlank() -> null
-                    userName.length < 3 -> "Username must be at least 3 characters"
-                    userName.length > 20 -> "Username must be less than 20 characters"
+                    trimmedName.isBlank() -> null
+                    trimmedName.length < 3 -> "Username must be at least 3 characters"
+                    trimmedName.length > 20 -> "Username must be 20 characters or less"
                     else -> null
                 }
             )
         }
-        if (userName.length in 3..20) {
-            checkNameJob?.cancel()
+        if (trimmedName.length in 3..20) {
             checkNameJob = viewModelScope.launch {
                 delay(350)
-                val isTaken = repository.isUserNameTaken(userName)
+                val isTaken = repository.isUserNameTaken(trimmedName)
                 _state.update {
-                    it.copy(userNameError = if (isTaken) "Username is already taken" else null)
+                    if (it.userName != userName) it else it.copy(
+                        isUserNameAvailable = !isTaken,
+                        userNameError = if (isTaken) "Username is already taken" else null,
+                    )
                 }
             }
         }
@@ -247,7 +205,7 @@ class UserProfileViewModel(
 
     fun handleNavToScreen2() {
         viewModelScope.launch {
-            val userName = _state.value.userName
+            val userName = _state.value.userName.trim()
             when {
                 userName.isBlank() -> {
                     _state.update { it.copy(userNameError = "Please enter a username") }
@@ -263,11 +221,17 @@ class UserProfileViewModel(
                     sendSnackbar("Please choose a different username")
                 }
                 else -> {
+                    checkNameJob?.cancel()
                     _state.update { it.copy(isLoading = true) }
                     val isTaken = repository.isUserNameTaken(userName)
-                    _state.update { it.copy(isLoading = false) }
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            isUserNameAvailable = !isTaken,
+                            userNameError = if (isTaken) "Username is already taken" else null,
+                        )
+                    }
                     if (isTaken) {
-                        _state.update { it.copy(userNameError = "Username is already taken") }
                         sendSnackbar("Username is already taken")
                     } else {
                         _uiEvent.emit(UserProfileUiEvent.NavToScreen2)
@@ -330,7 +294,7 @@ class UserProfileViewModel(
     }
 
     fun cmToFeetInches(cm: Float): String {
-        val totalInches = (cm / 2.54f).toInt()
+        val totalInches = (cm / CENTIMETERS_PER_INCH).roundToInt()
         val feet = totalInches / 12
         val inches = totalInches % 12
         return "$feet'$inches\""
@@ -340,5 +304,10 @@ class UserProfileViewModel(
 
     private fun sendSnackbar(message: String) {
         viewModelScope.launch { _uiEvent.emit(UserProfileUiEvent.SendSnackbar(message)) }
+    }
+
+    private companion object {
+        const val CENTIMETERS_PER_INCH = 2.54f
+        const val KILOGRAMS_PER_POUND = 0.45359237f
     }
 }

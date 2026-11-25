@@ -17,6 +17,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -31,13 +36,10 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -45,6 +47,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -62,27 +65,24 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ghostbug.heavyLifts.R
-import com.ghostbug.heavyliftsapp.presentation.screens.signup.SignUpEvent
-import com.ghostbug.heavyliftsapp.presentation.screens.signup.SignUpUiEvent
-import com.ghostbug.heavyliftsapp.presentation.screens.signup.SignUpViewModel
 import com.ghostbug.heavyliftsapp.presentation.ui.components.SetBadgeShape
 import com.ghostbug.heavyliftsapp.presentation.ui.components.SetNumberBadge
 import com.ghostbug.heavyliftsapp.presentation.ui.theme.HeavyLiftsColors
 import com.ghostbug.heavyliftsapp.presentation.ui.theme.HeavyLiftsType
 import kotlin.time.Clock
-import kotlinx.coroutines.launch
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -108,53 +108,32 @@ private fun getExerciseInitials(name: String): String {
 @Composable
 fun HomeScreen(
     homeViewModel: HomeViewModel = viewModel(),
-    signUpViewModel: SignUpViewModel = viewModel(),
-    onNavigateToExerciseSelection: () -> Unit,
     onNavigateToLogWorkout: (Long) -> Unit,
-    onNavigateToLogIn: () -> Unit
+    bottomBarPadding: Dp = 0.dp,
 ) {
     val state by homeViewModel.state.collectAsStateWithLifecycle()
-    var showLogoutDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
         homeViewModel.onEvent(HomeEvent.RefreshWorkouts)
-        launch {
-            signUpViewModel.uiEvent.collect { event ->
-                if (event is SignUpUiEvent.NavigateToSignIn) onNavigateToLogIn()
+        homeViewModel.uiEvent.collect { event ->
+            when (event) {
+                is HomeUiEvent.NavigateToLogWorkout -> onNavigateToLogWorkout(event.exerciseId)
+                is HomeUiEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
             }
         }
-        launch {
-            homeViewModel.uiEvent.collect { event ->
-                when (event) {
-                    is HomeUiEvent.NavigateToExerciseSelection -> onNavigateToExerciseSelection()
-                    is HomeUiEvent.NavigateToLogWorkout -> onNavigateToLogWorkout(event.exerciseId)
-                    is HomeUiEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
-                }
-            }
-        }
-    }
-
-    if (showLogoutDialog) {
-        HeavyLogoutDialog(
-            onDismissRequest = { showLogoutDialog = false },
-            onLogoutClick = {
-                showLogoutDialog = false
-                signUpViewModel.onEvent(SignUpEvent.OnNavigateToSignIn)
-            }
-        )
     }
 
     Scaffold(
         containerColor = HeavyLiftsColors.Bg,
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets.union(WindowInsets(bottom = bottomBarPadding)),
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { paddingValues ->
         HomeContent(
             state = state,
             paddingValues = paddingValues,
             onDateSelected = { date -> homeViewModel.onEvent(HomeEvent.OnDateSelected(date)) },
-            onEvent = { homeViewModel.onEvent(it) },
-            onShowSignOut = { showLogoutDialog = true }
+            onEvent = homeViewModel::onEvent,
         )
     }
 }
@@ -167,26 +146,34 @@ private fun HomeContent(
     paddingValues: PaddingValues,
     onDateSelected: (LocalDate) -> Unit,
     onEvent: (HomeEvent) -> Unit,
-    onShowSignOut: () -> Unit
 ) {
     val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
     val weekCount = 500
     val firstMonday = today.minus(today.dayOfWeek.ordinal + (weekCount - 1) * 7, DateTimeUnit.DAY)
     val selectedWeek = (firstMonday.daysUntil(state.selectedDate) / 7).coerceIn(0, weekCount - 1)
     val pagerState = rememberPagerState(initialPage = selectedWeek) { weekCount }
-    val canEdit = state.selectedDate == today
+    val canEdit = state.isTodaySelected
     val context = LocalContext.current
     LaunchedEffect(selectedWeek) {
         pagerState.scrollToPage(selectedWeek)
     }
 
+    val layoutDirection = LocalLayoutDirection.current
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(paddingValues)
+            .padding(
+                start = paddingValues.calculateStartPadding(layoutDirection),
+                top = paddingValues.calculateTopPadding(),
+                end = paddingValues.calculateEndPadding(layoutDirection),
+            )
+            .consumeWindowInsets(paddingValues)
             .background(HeavyLiftsColors.Bg)
     ) {
-        LazyColumn(modifier = Modifier.weight(1f), contentPadding = PaddingValues(bottom = 12.dp)) {
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(bottom = paddingValues.calculateBottomPadding() + 12.dp),
+        ) {
             item {
                 DateHeaderSection(state.selectedDate) {
                     val date = state.selectedDate
@@ -230,12 +217,6 @@ private fun HomeContent(
                         }
                     )
                 }
-            }
-        }
-
-        if (canEdit) {
-            Box(Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp)) {
-                NewLiftActionBar(onClickNewLift = { onEvent(HomeEvent.OnAddWorkoutClick) })
             }
         }
     }
@@ -483,41 +464,6 @@ private fun HeavyDateItem(
                 fontFamily = HeavyLiftsType.Display,
                 fontWeight = FontWeight.Bold,
                 fontSize = 17.sp
-            )
-        }
-    }
-}
-
-// ─── Floating New Lift Action Bar ─────────────────────────────────────────────
-
-@Composable
-private fun NewLiftActionBar(onClickNewLift: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(64.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Button(
-            onClick = onClickNewLift,
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxSize(),
-            shape = CircleShape,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = HeavyLiftsColors.AccentStrong,
-                contentColor = Color.White
-            ),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
-        ) {
-            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(22.dp))
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "New lift",
-                color = Color.White,
-                fontFamily = HeavyLiftsType.Body,
-                fontSize = 17.sp,
-                fontWeight = FontWeight.Bold
             )
         }
     }
@@ -819,7 +765,7 @@ private fun HeavyEmptyState(canEdit: Boolean) {
             }
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                "No lifts logged yet",
+                "No sets logged yet",
                 color = HeavyLiftsColors.Fg1,
                 fontFamily = HeavyLiftsType.Display,
                 fontSize = 18.sp,
@@ -828,65 +774,10 @@ private fun HeavyEmptyState(canEdit: Boolean) {
             if (canEdit) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    "Tap '+ New lift' to start your workout.",
+                    "Tap + to add your first exercise",
                     color = HeavyLiftsColors.Fg3,
                     fontSize = 14.sp
                 )
-            }
-        }
-    }
-}
-
-// ─── Logout Dialog ────────────────────────────────────────────────────────────
-
-@Composable
-fun HeavyLogoutDialog(onDismissRequest: () -> Unit, onLogoutClick: () -> Unit) {
-    Dialog(onDismissRequest = onDismissRequest) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(HeavyLiftsColors.BgElevated, RoundedCornerShape(20.dp))
-                .padding(24.dp)
-        ) {
-            Text(
-                text = "Sign out",
-                color = HeavyLiftsColors.Fg1,
-                fontWeight = FontWeight.Bold,
-                fontSize = 20.sp
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = "You're about to sign out. Your data will remain intact.",
-                color = HeavyLiftsColors.Fg3,
-                fontSize = 14.sp,
-                lineHeight = 21.sp
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onDismissRequest,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = HeavyLiftsColors.Fg2),
-                    contentPadding = PaddingValues(vertical = 12.dp)
-                ) {
-                    Text("Cancel", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                }
-                Button(
-                    onClick = onLogoutClick,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = HeavyLiftsColors.Accent,
-                        contentColor = HeavyLiftsColors.Fg1
-                    ),
-                    contentPadding = PaddingValues(vertical = 12.dp)
-                ) {
-                    Text("Sign out", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                }
             }
         }
     }

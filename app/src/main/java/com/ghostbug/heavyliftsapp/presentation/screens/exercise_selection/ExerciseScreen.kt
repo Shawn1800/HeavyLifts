@@ -31,13 +31,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,21 +58,18 @@ fun ExerciseSelectionScreen(
     onBack: () -> Unit
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
         viewModel.uiEvent.collect { event ->
             when (event) {
                 is ExerciseUiEvent.AddExercise  -> onNavigateToLogWorkout(event.exercise.id)
                 is ExerciseUiEvent.NavigateBack -> onBack()
-                is ExerciseUiEvent.SendSnackbar -> snackbarHostState.showSnackbar(event.message)
             }
         }
     }
 
     Scaffold(
-        containerColor = HeavyLiftsColors.Bg,
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+        containerColor = HeavyLiftsColors.Bg
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
             ExerciseSelectionContent(
@@ -173,7 +167,7 @@ private fun SelectionTopBar(onBack: () -> Unit) {
         }
 
         Text(
-            text = "Choose exercise",
+            text = "Add exercise",
             color = HeavyLiftsColors.Fg1,
             fontFamily = HeavyLiftsType.Display,
             fontWeight = FontWeight.Bold,
@@ -260,10 +254,8 @@ private fun ExerciseSectionHeader(count: Int?) {
 
         count?.let {
             Text(
-                text = "$it found",
+                text = "$it",
                 modifier = Modifier
-                    .clip(CircleShape)
-                    .background(HeavyLiftsColors.BgElevated)
                     .padding(horizontal = 14.dp, vertical = 8.dp),
                 color = HeavyLiftsColors.Fg2,
                 fontFamily = HeavyLiftsType.Body,

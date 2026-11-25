@@ -2,12 +2,17 @@ package com.ghostbug.heavyliftsapp.presentation.screens.progress
 
 import android.text.format.DateFormat
 import androidx.annotation.StringRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,11 +43,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -56,11 +64,13 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.ghostbug.heavyLifts.R
 import com.ghostbug.heavyliftsapp.domain.model.ExerciseEntity
 import com.ghostbug.heavyliftsapp.domain.model.ProgressMetric
@@ -76,7 +86,8 @@ import java.util.Locale
 @Composable
 fun ProgressScreen(
     progressViewModel: ProgressViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    bottomBarPadding: Dp = 0.dp,
 ) {
     val state by progressViewModel.uiState.collectAsStateWithLifecycle()
     LifecycleEventEffect(Lifecycle.Event.ON_START) {
@@ -89,7 +100,8 @@ fun ProgressScreen(
         onMetricSelected = progressViewModel::selectMetric,
         onRangeSelected = progressViewModel::selectRange,
         onRetry = progressViewModel::loadProgress,
-        modifier = modifier
+        modifier = modifier,
+        bottomBarPadding = bottomBarPadding,
     )
 }
 
@@ -100,7 +112,8 @@ private fun ProgressContent(
     onMetricSelected: (ProgressMetric) -> Unit,
     onRangeSelected: (ProgressRange) -> Unit,
     onRetry: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    bottomBarPadding: Dp = 0.dp,
 ) {
     var showExercisePicker by rememberSaveable { mutableStateOf(false) }
 
@@ -116,13 +129,27 @@ private fun ProgressContent(
         )
     }
 
-    Scaffold(modifier = modifier, containerColor = HeavyLiftsColors.Bg) { insets ->
+    Scaffold(
+        modifier = modifier,
+        containerColor = HeavyLiftsColors.Bg,
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets.union(WindowInsets(bottom = bottomBarPadding)),
+    ) { insets ->
+        val layoutDirection = LocalLayoutDirection.current
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(insets)
+                .padding(
+                    start = insets.calculateStartPadding(layoutDirection),
+                    top = insets.calculateTopPadding(),
+                    end = insets.calculateEndPadding(layoutDirection),
+                )
                 .consumeWindowInsets(insets),
-            contentPadding = PaddingValues(start = 16.dp, top = 24.dp, end = 16.dp, bottom = 16.dp),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                top = 24.dp,
+                end = 16.dp,
+                bottom = insets.calculateBottomPadding() + 16.dp,
+            ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
@@ -354,6 +381,41 @@ private fun SummaryPill(text: String) {
 }
 
 @Composable
+internal fun ExerciseProgressSection(
+    progress: ProgressLoadState,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var metric by rememberSaveable { mutableStateOf(ProgressMetric.TopWeight) }
+    var range by rememberSaveable { mutableStateOf(ProgressRange.Month) }
+
+    Box(modifier.fillMaxWidth()) {
+        when (progress) {
+            ProgressLoadState.Loading -> ProgressLoading()
+            ProgressLoadState.Error -> ProgressMessage(
+                title = stringResource(R.string.progress_load_failed),
+                detail = stringResource(R.string.progress_load_failed_detail),
+                onRetry = onRetry,
+            )
+            ProgressLoadState.NoExercises -> Unit
+            is ProgressLoadState.Ready -> {
+                if (progress.history.heaviestSet == null) {
+                    ProgressMessage(
+                        title = stringResource(R.string.progress_no_lifts),
+                        detail = stringResource(R.string.progress_no_lifts_detail),
+                    )
+                } else {
+                    val chartState = remember(progress.history, metric, range) {
+                        progress.history.chartState(metric, range)
+                    }
+                    ProgressionCard(chartState, metric, range, { metric = it }, { range = it })
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun ProgressionCard(
     progress: ProgressLoadState.Ready,
     metric: ProgressMetric,
@@ -511,6 +573,7 @@ private fun ProgressMessage(title: String, detail: String, onRetry: (() -> Unit)
                 modifier = Modifier.size(64.dp).background(HeavyLiftsColors.AccentSoft, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
+
                 Icon(
                     Icons.Default.FitnessCenter,
                     contentDescription = null,

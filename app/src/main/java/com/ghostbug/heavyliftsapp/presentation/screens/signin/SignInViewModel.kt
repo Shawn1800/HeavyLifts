@@ -3,7 +3,6 @@ package com.ghostbug.heavyliftsapp.presentation.screens.signin
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ghostbug.heavyliftsapp.domain.repository.AuthRepository
-import com.ghostbug.heavyliftsapp.domain.repository.UserProfileRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,7 +13,6 @@ import kotlinx.coroutines.launch
 
 class SignInViewModel(
     private val authRepository: AuthRepository,
-    private val userProfileRepository: UserProfileRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SignInState())
@@ -55,9 +53,7 @@ class SignInViewModel(
                 email = _state.value.email,
                 password = _state.value.password
             )
-            if (success) {
-                checkUserProfileAndNavigate()
-            } else {
+            if (!success) {
                 _uiEvent.emit(SignInUiEvent.ShowError("Invalid email or password"))
             }
             _state.update { it.copy(isLoading = false) }
@@ -90,23 +86,13 @@ class SignInViewModel(
             viewModelScope.launch {
                 _state.update { it.copy(isLoading = true) }
                 val success = authRepository.signInWithGoogle(idToken,rawNonce)
-                if (success) {
-                    checkUserProfileAndNavigate()
-                } else {
+                if (!success) {
                     _uiEvent.emit(SignInUiEvent.ShowError("Google Sign-In Failed"))
                 }
                 _state.update { it.copy(isLoading = false) }
             }
         }
 
-    private suspend fun checkUserProfileAndNavigate() {
-        val profile = userProfileRepository.getOwnProfile()
-        if (profile == null) {
-            _uiEvent.emit(SignInUiEvent.NavigateToOnboarding)
-        } else {
-            _uiEvent.emit(SignInUiEvent.NavigateToHome)
-        }
-    }
 }
 
 
@@ -121,9 +107,7 @@ data class SignInState(
 )
 
 sealed class SignInUiEvent {
-    object NavigateToHome : SignInUiEvent()
     object NavigateToSignUp : SignInUiEvent()
-    object NavigateToOnboarding : SignInUiEvent()
     data class ShowError(val message: String) : SignInUiEvent()
     data class ShowSuccess(val message: String) : SignInUiEvent()
 }

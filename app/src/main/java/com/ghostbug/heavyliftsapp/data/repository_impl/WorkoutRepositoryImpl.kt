@@ -28,6 +28,7 @@ class WorkoutRepositoryImpl(
         const val COLUMN_DATE = "date"
         const val COLUMN_EXERCISE_ID = "exercise_id"
         const val COLUMN_WEIGHT = "weight"
+        const val COLUMN_SET_NUMBER = "sets"
         const val COLUMN_ID = "id"
         const val EXERCISES_JOIN = "*, exercises(*)"
         const val HISTORY_PAGE_SIZE = 1_000
@@ -37,7 +38,7 @@ class WorkoutRepositoryImpl(
         get() = auth.currentUserOrNull()?.id
 
     override suspend fun insertWorkoutEntry(entries: List<WorkoutEntryEntity>) {
-        val userId = currentUserId ?: return
+        val userId = checkNotNull(currentUserId) { "Sign in to save your workout" }
         withContext(Dispatchers.IO) {
             val dtos = entries.map { it.toDto().copy(userId = userId) }
             postgrest.from(TABLE_WORKOUT_ENTRIES).insert(dtos)
@@ -97,6 +98,8 @@ class WorkoutRepositoryImpl(
                             lt(COLUMN_DATE, endOfDay)
                         }
                     }
+                    order(COLUMN_SET_NUMBER, Order.ASCENDING)
+                    order(COLUMN_ID, Order.ASCENDING)
                 }
                 .decodeList<WorkoutEntryEntityDto>()
                 .map { it.toDomain() }
