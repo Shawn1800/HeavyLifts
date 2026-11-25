@@ -5,7 +5,6 @@ import kotlinx.datetime.LocalDate
 
 sealed interface HomeEvent {
     data class OnDateSelected(val date: LocalDate) : HomeEvent
-    object OnAddWorkoutClick : HomeEvent
     data class EditWorkout(val exerciseId: Long) : HomeEvent
     object RefreshWorkouts : HomeEvent
 

@@ -9,6 +9,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,6 +43,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -58,6 +64,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -79,7 +86,8 @@ import java.util.Locale
 @Composable
 fun ProgressScreen(
     progressViewModel: ProgressViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    bottomBarPadding: Dp = 0.dp,
 ) {
     val state by progressViewModel.uiState.collectAsStateWithLifecycle()
     LifecycleEventEffect(Lifecycle.Event.ON_START) {
@@ -92,7 +100,8 @@ fun ProgressScreen(
         onMetricSelected = progressViewModel::selectMetric,
         onRangeSelected = progressViewModel::selectRange,
         onRetry = progressViewModel::loadProgress,
-        modifier = modifier
+        modifier = modifier,
+        bottomBarPadding = bottomBarPadding,
     )
 }
 
@@ -103,7 +112,8 @@ private fun ProgressContent(
     onMetricSelected: (ProgressMetric) -> Unit,
     onRangeSelected: (ProgressRange) -> Unit,
     onRetry: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    bottomBarPadding: Dp = 0.dp,
 ) {
     var showExercisePicker by rememberSaveable { mutableStateOf(false) }
 
@@ -119,13 +129,27 @@ private fun ProgressContent(
         )
     }
 
-    Scaffold(modifier = modifier, containerColor = HeavyLiftsColors.Bg) { insets ->
+    Scaffold(
+        modifier = modifier,
+        containerColor = HeavyLiftsColors.Bg,
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets.union(WindowInsets(bottom = bottomBarPadding)),
+    ) { insets ->
+        val layoutDirection = LocalLayoutDirection.current
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(insets)
+                .padding(
+                    start = insets.calculateStartPadding(layoutDirection),
+                    top = insets.calculateTopPadding(),
+                    end = insets.calculateEndPadding(layoutDirection),
+                )
                 .consumeWindowInsets(insets),
-            contentPadding = PaddingValues(start = 16.dp, top = 24.dp, end = 16.dp, bottom = 16.dp),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                top = 24.dp,
+                end = 16.dp,
+                bottom = insets.calculateBottomPadding() + 16.dp,
+            ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {

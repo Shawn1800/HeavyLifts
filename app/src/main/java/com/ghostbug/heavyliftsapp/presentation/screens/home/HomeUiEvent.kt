@@ -5,8 +5,5 @@ sealed interface HomeUiEvent {
         val exerciseId: Long,
         val dateMillis: Long
     ) : HomeUiEvent
-    data class NavigateToExerciseSelection(
-        val dateMillis: Long
-    ) : HomeUiEvent
     data class ShowSnackbar(val message: String) : HomeUiEvent
 }

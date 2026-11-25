@@ -167,7 +167,7 @@ private fun SelectionTopBar(onBack: () -> Unit) {
         }
 
         Text(
-            text = "Choose exercise",
+            text = "Add exercise",
             color = HeavyLiftsColors.Fg1,
             fontFamily = HeavyLiftsType.Display,
             fontWeight = FontWeight.Bold,

@@ -6,7 +6,6 @@ import com.ghostbug.heavyliftsapp.domain.model.ExerciseEntity
 import com.ghostbug.heavyliftsapp.domain.model.WorkoutEntryEntity
 import com.ghostbug.heavyliftsapp.domain.repository.OneRepMaxRepository
 import com.ghostbug.heavyliftsapp.domain.repository.WorkoutRepository
-import com.ghostbug.heavyliftsapp.presentation.screens.home.HomeUiEvent.NavigateToExerciseSelection
 import com.ghostbug.heavyliftsapp.presentation.screens.home.HomeUiEvent.NavigateToLogWorkout
 import com.ghostbug.heavyliftsapp.presentation.screens.home.HomeUiEvent.ShowSnackbar
 import kotlinx.coroutines.CancellationException
@@ -77,16 +76,6 @@ class HomeViewModel(
                     )
                 }
                 observeWorkoutsForDate(millis)
-            }
-
-            is HomeEvent.OnAddWorkoutClick -> {
-                viewModelScope.launch {
-                    _uiEvent.emit(
-                        NavigateToExerciseSelection(
-                            dateMillis = _state.value.selectedDateMillis ?: System.currentTimeMillis()
-                        )
-                    )
-                }
             }
 
             is HomeEvent.EditWorkout -> {

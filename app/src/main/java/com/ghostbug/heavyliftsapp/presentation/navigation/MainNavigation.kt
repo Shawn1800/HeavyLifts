@@ -190,15 +190,32 @@ fun MainNavigation(
                     enter = expandVertically(expandFrom = Alignment.Top),
                     exit = shrinkVertically(shrinkTowards = Alignment.Top)
                 ) {
+                    val canAddExercise = if (currentRoute == Route.HomeScreen) {
+                        val homeState by homeViewModel.state.collectAsStateWithLifecycle()
+                        homeState.isTodaySelected
+                    } else {
+                        false
+                    }
                     BottomNavigationBar(
                         selectedKey = navigationState.topLevelRoute,
-                        onSelectKey = navigator::navigate
+                        onSelectKey = navigator::navigate,
+                        onAddExercise = if (canAddExercise) {
+                            {
+                                if (navigationState.currentRoute == Route.HomeScreen) {
+                                    navigator.navigate(Route.ExerciseScreen)
+                                }
+                            }
+                        } else {
+                            null
+                        },
                     )
                 }
             }
         }
     ) { innerPadding ->
-        val bottomPadding = PaddingValues(bottom = innerPadding.calculateBottomPadding())
+        val bottomPadding = PaddingValues(
+            bottom = if (showBottomNav) 0.dp else innerPadding.calculateBottomPadding(),
+        )
         NavDisplay(
             modifier = Modifier
                 .fillMaxSize()
@@ -230,14 +247,12 @@ fun MainNavigation(
                     entry<Route.HomeScreen> {
                         HomeScreen(
                             homeViewModel = homeViewModel,
+                            bottomBarPadding = innerPadding.calculateBottomPadding(),
                             onNavigateToLogWorkout = { exerciseId ->
                                 val date = homeViewModel.state.value.selectedDateMillis
                                     ?: System.currentTimeMillis()
                                 navigator.navigate(Route.LogWorkoutScreen(exerciseId, date))
                             },
-                            onNavigateToExerciseSelection = {
-                                navigator.navigate(Route.ExerciseScreen)
-                            }
                         )
                     }
 
@@ -337,6 +352,7 @@ fun MainNavigation(
                     entry<Route.ProfileScreen> {
                         ProfileScreen(
                             viewModel = profileViewModel,
+                            bottomBarPadding = innerPadding.calculateBottomPadding(),
                             onBackClick = {
                                 navigator.navigate(Route.HomeScreen)
                             },
@@ -354,7 +370,10 @@ fun MainNavigation(
                                 container.exerciseRepository,
                             )
                         )
-                        ProgressScreen(progressViewModel = progressViewModel)
+                        ProgressScreen(
+                            progressViewModel = progressViewModel,
+                            bottomBarPadding = innerPadding.calculateBottomPadding(),
+                        )
                     }
                 }
             ).let { entries ->
