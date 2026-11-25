@@ -97,11 +97,7 @@ class ProgressViewModel(
     }
 
     private fun ProgressState.withHistory(history: ProgressHistory): ProgressState = copy(
-        loadState = ProgressLoadState.Ready(
-            history = history,
-            chartPoints = history.chartPoints(metric, range),
-            latestSession = history.latestSession(range),
-        ),
+        loadState = history.chartState(metric, range),
     )
 
     private companion object {

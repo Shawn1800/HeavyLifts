@@ -24,7 +24,7 @@
     <string name="progress_load_failed_detail">Try again to load your progress.</string>
     <string name="progress_no_exercises">No exercises available</string>
     <string name="progress_no_exercises_detail">Check again to load the exercise list.</string>
-    <string name="progress_no_lifts">No lifts logged yet</string>
+    <string name="progress_no_lifts">No sets logged yet</string>
     <string name="progress_no_lifts_detail">Log a set for this exercise to see your progress here.</string>
     <string name="progress_try_again">Try again</string>
 </resources>

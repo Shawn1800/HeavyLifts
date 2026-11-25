@@ -254,10 +254,8 @@ private fun ExerciseSectionHeader(count: Int?) {
 
         count?.let {
             Text(
-                text = "$it found",
+                text = "$it",
                 modifier = Modifier
-                    .clip(CircleShape)
-                    .background(HeavyLiftsColors.BgElevated)
                     .padding(horizontal = 14.dp, vertical = 8.dp),
                 color = HeavyLiftsColors.Fg2,
                 fontFamily = HeavyLiftsType.Body,

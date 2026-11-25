@@ -2,13 +2,19 @@ package com.ghostbug.heavyliftsapp.presentation.screens.log_workout
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ghostbug.heavyliftsapp.domain.usecase.OneRepMaxUseCase
+import com.ghostbug.heavyliftsapp.domain.model.ProgressMetric
+import com.ghostbug.heavyliftsapp.domain.model.ProgressRange
 import com.ghostbug.heavyliftsapp.domain.model.WorkoutEntryEntity
 import com.ghostbug.heavyliftsapp.domain.repository.ExerciseRepository
 import com.ghostbug.heavyliftsapp.domain.repository.OneRepMaxRepository
 import com.ghostbug.heavyliftsapp.domain.repository.WorkoutRepository
+import com.ghostbug.heavyliftsapp.domain.usecase.GetExerciseProgressUseCase
+import com.ghostbug.heavyliftsapp.domain.usecase.OneRepMaxUseCase
+import com.ghostbug.heavyliftsapp.presentation.screens.progress.ProgressLoadState
+import com.ghostbug.heavyliftsapp.presentation.screens.progress.chartState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -25,12 +31,14 @@ class LogWorkoutViewModel(
     private val oneRepMaxRepository: OneRepMaxRepository,
     private val oneRepMaxUseCase: OneRepMaxUseCase,
     private val exerciseRepository: ExerciseRepository,
+    private val getExerciseProgress: GetExerciseProgressUseCase = GetExerciseProgressUseCase(workoutRepository),
 ) : ViewModel() {
     private val _state = MutableStateFlow(LogWorkoutState())
     val state: StateFlow<LogWorkoutState> = _state.asStateFlow()
     private val _uiEvent = MutableSharedFlow<LogWorkoutUiEvent>(extraBufferCapacity = 1)
     val uiEvent: SharedFlow<LogWorkoutUiEvent> = _uiEvent.asSharedFlow()
     private var loadJob: Job? = null
+    private var progressJob: Job? = null
 
     fun onEvent(event: LogWorkoutEvent) {
         when (event) {
@@ -40,20 +48,31 @@ class LogWorkoutViewModel(
             is LogWorkoutEvent.UpdateWeight -> handleUpdateWeight(event.id, event.weight)
             is LogWorkoutEvent.SetExerciseById -> handleSetExerciseById(event)
             is LogWorkoutEvent.SaveWorkout -> saveWorkout(event.currentWeight, event.currentReps)
+            LogWorkoutEvent.RetryProgress -> _state.value.exercise?.id?.let(::loadExerciseProgress)
         }
     }
 
     private fun handleSetExerciseById(event: LogWorkoutEvent.SetExerciseById) {
         loadJob?.cancel()
-        _state.update { it.copy(exercise = null, sets = emptyList(), dateMillis = event.dateMillis) }
+        progressJob?.cancel()
+        _state.update {
+            it.copy(
+                exercise = null,
+                sets = emptyList(),
+                dateMillis = event.dateMillis,
+                progress = ProgressLoadState.Loading,
+            )
+        }
         loadJob = viewModelScope.launch {
             try {
                 val exercise = exerciseRepository.getExerciseById(event.exerciseId)
                 if (exercise != null) {
                     val list = workoutRepository.getWorkoutByExerciseAndDate(event.exerciseId, event.dateMillis)
+                    ensureActive()
                     _state.update {
                         it.copy(exercise = exercise, dateMillis = event.dateMillis, sets = list)
                     }
+                    loadExerciseProgress(exercise.id)
                 } else {
                     sendSnackbar("Exercise not found")
                 }
@@ -64,29 +83,33 @@ class LogWorkoutViewModel(
         }
     }
 
-    private fun handleAddSet(exerciseId: Long, weightStr: String, repsStr: String) {
-        if (_state.value.isSaving || _state.value.exercise?.id != exerciseId) return
-        val weight = weightStr.toDoubleOrNull()
-        val reps = repsStr.toIntOrNull()
+    private fun loadExerciseProgress(exerciseId: Long) {
+        progressJob?.cancel()
+        _state.update { it.copy(progress = ProgressLoadState.Loading) }
+        progressJob = viewModelScope.launch {
+            val progress = try {
+                getExerciseProgress(exerciseId).chartState(ProgressMetric.TopWeight, ProgressRange.Month)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                ProgressLoadState.Error
+            }
+            ensureActive()
+            _state.update { it.copy(progress = progress) }
+        }
+    }
 
-        if (weight == null || reps == null || weight == 0.0 || reps == 0) {
+    private fun handleAddSet(exerciseId: Long, weightStr: String, repsStr: String) {
+        val currentState = _state.value
+        if (currentState.isSaving || currentState.exercise?.id != exerciseId) return
+
+        val newSet = createDraftSet(currentState, exerciseId, weightStr, repsStr)
+        if (newSet == null) {
             sendSnackbar("Enter valid weight and reps")
             return
         }
 
-        _state.update { currentState ->
-            val setNumber = currentState.nextSetNumber
-            val newSet = WorkoutEntryEntity(
-                id = -setNumber.toLong(),
-                exerciseId = exerciseId,
-                weight = weight.toFloat(),
-                reps = reps,
-                sets = setNumber,
-                date = currentState.dateMillis,
-                userId = ""
-            )
-            currentState.copy(sets = currentState.sets + newSet)
-        }
+        _state.update { it.copy(sets = it.sets + newSet) }
     }
 
     private fun handleDeleteSet(id: Long) {
@@ -105,6 +128,7 @@ class LogWorkoutViewModel(
 
                 val exerciseId = _state.value.exercise?.id ?: return@launch
                 val normalizedDate = getNormalizedDate(_state.value.dateMillis)
+                loadExerciseProgress(exerciseId)
 
                 if (updatedSets.isEmpty()) {
                     oneRepMaxRepository.deleteOneRepMax(exerciseId, normalizedDate)
@@ -127,31 +151,44 @@ class LogWorkoutViewModel(
     }
 
 
-    private fun saveWorkout(currentWeightStr: String = "", currentRepsStr: String = "") {
+    private fun createDraftSet(
+        currentState: LogWorkoutState,
+        exerciseId: Long,
+        weightInput: String?,
+        repsInput: String?,
+    ): WorkoutEntryEntity? {
+        val (weight, reps) = parseSetInput(weightInput, repsInput) ?: return null
+        val setNumber = currentState.nextSetNumber
+        return WorkoutEntryEntity(
+            id = -setNumber.toLong(),
+            exerciseId = exerciseId,
+            weight = weight,
+            reps = reps,
+            sets = setNumber,
+            date = currentState.dateMillis,
+            userId = ""
+        )
+    }
+
+    private fun saveWorkout(currentWeightStr: String?, currentRepsStr: String?) {
         val currentState = _state.value
         val exerciseId = currentState.exercise?.id ?: return
         if (currentState.isSaving) return
 
-        val dateToSave = getNormalizedDate(currentState.dateMillis)
-        val curWeight = currentWeightStr.toDoubleOrNull()
-        val curReps = currentRepsStr.toIntOrNull()
-
-        val newSets = currentState.sets
-            .filter { it.id <= 0L }
-            .map { it.copy(id = 0L, date = dateToSave) }
-            .toMutableList()
-        if (curWeight != null && curReps != null && curWeight > 0 && curReps > 0) {
-            newSets.add(
-                WorkoutEntryEntity(
-                    exerciseId = exerciseId,
-                    weight = curWeight.toFloat(),
-                    reps = curReps,
-                    sets = currentState.nextSetNumber,
-                    date = dateToSave,
-                    userId = ""
-                )
-            )
+        val pendingSet = if (currentWeightStr != null || currentRepsStr != null) {
+            val set = createDraftSet(currentState, exerciseId, currentWeightStr, currentRepsStr)
+            if (set == null) {
+                sendSnackbar("Enter valid weight and reps")
+                return
+            }
+            set
+        } else {
+            null
         }
+
+        val dateToSave = getNormalizedDate(currentState.dateMillis)
+        val newSets = (currentState.sets.filter { it.id <= 0L } + listOfNotNull(pendingSet))
+            .map { it.copy(id = 0L, date = dateToSave) }
 
         if (newSets.isEmpty() && currentState.sets.isEmpty()) {
             sendSnackbar("Add at least 1 set")
@@ -201,4 +238,11 @@ class LogWorkoutViewModel(
     private fun sendSnackbar(message: String) {
         viewModelScope.launch { _uiEvent.emit(LogWorkoutUiEvent.SendSnackbar(message)) }
     }
+}
+
+internal fun parseSetInput(weight: String?, reps: String?): Pair<Float, Int>? {
+    val parsedWeight = weight?.replace(',', '.')?.toFloatOrNull()
+        ?.takeIf { it.isFinite() && it > 0f } ?: return null
+    val parsedReps = reps?.toIntOrNull()?.takeIf { it > 0 } ?: return null
+    return parsedWeight to parsedReps
 }

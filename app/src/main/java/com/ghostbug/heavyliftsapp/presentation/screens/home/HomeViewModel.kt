@@ -9,8 +9,6 @@ import com.ghostbug.heavyliftsapp.domain.repository.WorkoutRepository
 import com.ghostbug.heavyliftsapp.presentation.screens.home.HomeUiEvent.NavigateToExerciseSelection
 import com.ghostbug.heavyliftsapp.presentation.screens.home.HomeUiEvent.NavigateToLogWorkout
 import com.ghostbug.heavyliftsapp.presentation.screens.home.HomeUiEvent.ShowSnackbar
-import com.ghostbug.heavyliftsapp.supabase
-import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async

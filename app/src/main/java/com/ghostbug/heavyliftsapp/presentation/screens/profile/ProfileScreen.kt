@@ -11,12 +11,16 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,10 +28,17 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Height
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.MonitorWeight
+import androidx.compose.material.icons.outlined.PersonOutline
+import androidx.compose.material.icons.outlined.Transgender
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,6 +46,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -42,6 +54,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,14 +62,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -67,10 +79,6 @@ import com.ghostbug.heavyliftsapp.presentation.screens.user_onboarding.new_user_
 import com.ghostbug.heavyliftsapp.presentation.screens.user_onboarding.new_user_profile.WeightUnit
 import com.ghostbug.heavyliftsapp.presentation.ui.theme.HeavyLiftsColors
 import com.ghostbug.heavyliftsapp.presentation.ui.theme.HeavyLiftsType
-
-// HeavyLifts Profile screen — warm olive / cream / orange brand.
-// Mirrors the Claude design "ProfileScreenV1": avatar hero, stat tiles, body grid,
-// editable fields, and friendly sign-out / delete actions.
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -111,13 +119,15 @@ fun ProfileScreen(
 
     Scaffold(
         containerColor = HeavyLiftsColors.Bg,
+        contentWindowInsets = WindowInsets.safeDrawing,
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Box(
             Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(HeavyLiftsColors.Bg)
+                .consumeWindowInsets(paddingValues),
+            contentAlignment = Alignment.TopCenter,
         ) {
             if (state.isLoading) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -132,6 +142,7 @@ fun ProfileScreen(
 
             Column(
                 Modifier
+                    .widthIn(max = 520.dp)
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .padding(bottom = 24.dp)
@@ -151,9 +162,7 @@ fun ProfileScreen(
                     email = state.email
                 )
 
-                Spacer(Modifier.height(16.dp))
-
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(24.dp))
                 if (state.isEditing) {
                     ProfileEditCard(state = state, onEvent = viewModel::onEvent)
                 } else {
@@ -166,13 +175,10 @@ fun ProfileScreen(
                     onDeleteAccount = { viewModel.onEvent(ProfileEvent.ShowDeleteDialog) }
                 )
 
-                Spacer(Modifier.height(28.dp))
             }
         }
     }
 }
-
-// ─── Top bar ──────────────────────────────────────────────────────────────────
 
 @Composable
 private fun ProfileTopBar(
@@ -181,263 +187,196 @@ private fun ProfileTopBar(
     onBack: () -> Unit,
     onEdit: () -> Unit,
     onSave: () -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
 ) {
-    Row(
+    Box(
         Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 18.dp, vertical = 10.dp)
+            .heightIn(min = 48.dp),
     ) {
-        IconButton(onClick = if (isEditing) onCancel else onBack) {
+        IconButton(
+            onClick = if (isEditing) onCancel else onBack,
+            enabled = !isSaving,
+            modifier = Modifier.align(Alignment.CenterStart),
+            colors = IconButtonDefaults.iconButtonColors(
+                containerColor = HeavyLiftsColors.BgOverlay,
+                contentColor = HeavyLiftsColors.Fg1,
+            ),
+        ) {
             Icon(
-                imageVector = if (isEditing) Icons.Default.Close
-                              else Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = null,
-                tint = HeavyLiftsColors.Fg2,
-                modifier = Modifier.size(22.dp)
+                imageVector = if (isEditing) Icons.Default.Close else Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = if (isEditing) "Cancel editing" else "Back",
             )
         }
         Text(
             text = if (isEditing) "Edit profile" else "Profile",
+            modifier = Modifier.align(Alignment.Center).padding(horizontal = 68.dp),
             color = HeavyLiftsColors.Fg1,
             fontFamily = HeavyLiftsType.Display,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 18.sp
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 20.sp,
+            textAlign = TextAlign.Center,
         )
-        if (isEditing) {
-            IconButton(onClick = onSave, enabled = !isSaving) {
-                if (isSaving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = HeavyLiftsColors.AccentStrong,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "Save",
-                        tint = HeavyLiftsColors.AccentStrong,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            }
-        } else {
-            IconButton(onClick = onEdit) {
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = "Edit",
-                    tint = HeavyLiftsColors.Fg2,
-                    modifier = Modifier.size(20.dp)
+        TextButton(
+            onClick = if (isEditing) onSave else onEdit,
+            enabled = !isSaving,
+            modifier = Modifier.align(Alignment.CenterEnd).heightIn(min = 48.dp),
+            colors = ButtonDefaults.textButtonColors(
+                containerColor = HeavyLiftsColors.BgOverlay,
+                contentColor = HeavyLiftsColors.Fg1,
+            ),
+        ) {
+            if (isSaving) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    color = HeavyLiftsColors.AccentStrong,
+                    strokeWidth = 2.dp,
+                )
+            } else {
+                Text(
+                    text = if (isEditing) "Save" else "Edit",
+                    fontFamily = HeavyLiftsType.Body,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
                 )
             }
         }
     }
 }
-
-// ─── Hero (avatar, name, email) ──────────────────────────────────────────────
 
 @Composable
 private fun ProfileHero(profilePic: String?, userName: String, email: String) {
     Column(
         Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
             Modifier
-                .size(96.dp)
-                .drawBehind {
-                    drawRoundRect(
-                        color = Color(0x38000000),
-                        topLeft = Offset(0f, 6.dp.toPx()),
-                        cornerRadius = CornerRadius(96.dp.toPx())
-                    )
-                }
+                .size(108.dp)
+                .background(HeavyLiftsColors.BgOverlay, CircleShape)
+                .padding(6.dp)
                 .clip(CircleShape)
-                .background(HeavyLiftsColors.Accent),
-            contentAlignment = Alignment.Center
+                .background(Color(0xFF087DF0)),
+            contentAlignment = Alignment.Center,
         ) {
-            if (profilePic != null) {
+            Text(
+                text = userName.firstOrNull()?.uppercase() ?: "L",
+                color = Color.White,
+                fontFamily = HeavyLiftsType.Display,
+                fontSize = 38.sp,
+                fontWeight = FontWeight.ExtraBold,
+            )
+            if (!profilePic.isNullOrBlank()) {
                 AsyncImage(
                     model = profilePic,
                     contentDescription = "Profile picture",
-                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Text(
-                    text = (userName.firstOrNull()?.uppercase() ?: "S"),
-                    color = HeavyLiftsColors.Fg1,
-                    fontFamily = HeavyLiftsType.Display,
-                    fontSize = 38.sp,
-                    fontWeight = FontWeight.Bold
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
                 )
             }
         }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
             text = userName.ifBlank { "Lifter" },
             color = HeavyLiftsColors.Fg1,
             fontFamily = HeavyLiftsType.Display,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold
+            fontSize = 26.sp,
+            fontWeight = FontWeight.ExtraBold,
+            textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = if (email.isNotBlank()) "@${userName.ifBlank { "you" }} · $email"
-                   else "@${userName.ifBlank { "you" }}",
-            color = HeavyLiftsColors.Fg3,
-            fontFamily = HeavyLiftsType.Body,
-            fontSize = 13.sp
-        )
-    }
-}
-
-// ─── Stats row (streak / workouts / volume) ──────────────────────────────────
-
-@Composable
-private fun StatsRow(streak: Int, workouts: Int, totalLifted: String) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        StatTile(value = streak.toString(), unit = "streak", accent = true, modifier = Modifier.weight(1f))
-        StatTile(value = workouts.toString(), unit = "workouts", modifier = Modifier.weight(1f))
-        StatTile(value = totalLifted, unit = "lb lifted", modifier = Modifier.weight(1f))
-    }
-}
-
-@Composable
-private fun StatTile(
-    value: String,
-    unit: String,
-    accent: Boolean = false,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .background(HeavyLiftsColors.BgElevated, RoundedCornerShape(16.dp))
-            .padding(vertical = 14.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        if (accent) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.LocalFireDepartment,
-                    contentDescription = null,
-                    tint = HeavyLiftsColors.AccentStrong,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    text = value,
-                    color = HeavyLiftsColors.AccentStrong,
-                    fontFamily = HeavyLiftsType.Display,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        } else {
+        Spacer(Modifier.height(6.dp))
+        val handle = userName.takeIf { it.isNotBlank() }?.let { "@$it" }
+        val contact = listOfNotNull(handle, email.takeIf { it.isNotBlank() }).joinToString("  ·  ")
+        if (contact.isNotEmpty()) {
             Text(
-                text = value,
-                color = HeavyLiftsColors.Fg1,
-                fontFamily = HeavyLiftsType.Display,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold
+                text = contact,
+                color = HeavyLiftsColors.Fg3,
+                fontFamily = HeavyLiftsType.Body,
+                fontSize = 14.sp,
+                lineHeight = 19.sp,
+                textAlign = TextAlign.Center,
             )
         }
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = unit,
-            color = HeavyLiftsColors.Fg3,
-            fontFamily = HeavyLiftsType.Body,
-            fontSize = 11.sp
-        )
     }
 }
-
-// ─── Read-only details card ──────────────────────────────────────────────────
 
 @Composable
 private fun ProfileDetailsCard(state: ProfileState) {
     Column(
         Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .background(HeavyLiftsColors.BgElevated, RoundedCornerShape(20.dp))
-            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp)
+            .background(HeavyLiftsColors.BgOverlay, RoundedCornerShape(22.dp))
+            .padding(horizontal = 18.dp, vertical = 14.dp),
     ) {
         SectionHeader("About you")
-        DetailRow("Username", "@${state.userName.ifBlank { "—" }}")
-        Hairline()
-        DetailRow("Age", state.age?.let { "$it years" } ?: "—")
-        Hairline()
-        DetailRow("Height", state.height?.let {
+        DetailRow(Icons.Outlined.PersonOutline, "Username", state.userName.takeIf { it.isNotBlank() }?.let { "@$it" })
+        DetailRow(Icons.Outlined.CalendarToday, "Age", state.age?.let { "$it years" })
+        DetailRow(Icons.Outlined.Height, "Height", state.height?.let {
             val totalInches = (it / 2.54f).toInt()
             "${totalInches / 12}'${totalInches % 12}\" · ${"%.0f".format(it)} cm"
-        } ?: "—")
-        Hairline()
-        DetailRow("Weight", state.userWeight?.let {
+        })
+        DetailRow(Icons.Outlined.MonitorWeight, "Weight", state.userWeight?.let {
             "${"%.1f".format(it)} kg · ${"%.1f".format(it * 2.20462f)} lbs"
-        } ?: "—")
-        Hairline()
-        DetailRow("Gender", state.gender?.name?.lowercase()
-            ?.replace("_", " ")?.replaceFirstChar { it.uppercase() } ?: "—")
-        Hairline()
-        DetailRow("Location", listOfNotNull(state.city, state.country)
-            .joinToString(", ").ifBlank { "—" })
-        Hairline()
-        DetailRow("Email", state.email.ifBlank { "—" })
-        Spacer(Modifier.height(8.dp))
+        })
+        DetailRow(Icons.Outlined.Transgender, "Gender", state.gender?.name?.lowercase()
+            ?.replace("_", " ")?.replaceFirstChar { it.uppercase() })
+        DetailRow(
+            Icons.Outlined.LocationOn,
+            "Location",
+            listOfNotNull(state.city, state.country).filter { it.isNotBlank() }.joinToString(", "),
+        )
+        DetailRow(Icons.Outlined.Email, "Email", state.email, showDivider = false)
     }
 }
 
 @Composable
 private fun SectionHeader(text: String) {
-    Spacer(Modifier.height(12.dp))
     Text(
         text = text,
         color = HeavyLiftsColors.Fg1,
         fontFamily = HeavyLiftsType.Display,
-        fontSize = 16.sp,
-        fontWeight = FontWeight.SemiBold
+        fontSize = 20.sp,
+        fontWeight = FontWeight.ExtraBold,
+        modifier = Modifier.padding(bottom = 8.dp),
     )
-    Spacer(Modifier.height(4.dp))
 }
 
 @Composable
-private fun DetailRow(label: String, value: String) {
+private fun DetailRow(icon: ImageVector, label: String, value: String?, showDivider: Boolean = true) {
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+            .heightIn(min = 40.dp)
+            .padding(vertical = 7.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
+        Icon(icon, contentDescription = null, tint = HeavyLiftsColors.Fg1, modifier = Modifier.size(21.dp))
         Text(
             text = label,
-            color = HeavyLiftsColors.Fg3,
+            modifier = Modifier.weight(1f),
+            color = HeavyLiftsColors.Fg2,
             fontFamily = HeavyLiftsType.Body,
-            fontSize = 13.sp
+            fontSize = 14.sp,
         )
         Text(
-            text = value,
+            text = value?.takeIf { it.isNotBlank() } ?: "—",
+            modifier = Modifier.weight(2.3f),
             color = HeavyLiftsColors.Fg1,
-            fontFamily = HeavyLiftsType.Display,
+            fontFamily = HeavyLiftsType.Body,
             fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold
+            lineHeight = 18.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.End,
         )
     }
-}
-
-@Composable
-private fun Hairline() {
-    HorizontalDivider(color = HeavyLiftsColors.BorderSubtle, thickness = 0.5.dp)
+    if (showDivider) {
+        HorizontalDivider(modifier = Modifier.padding(start = 33.dp), color = HeavyLiftsColors.BorderSubtle)
+    }
 }
 
 // ─── Editable fields card ────────────────────────────────────────────────────
@@ -686,39 +625,59 @@ private fun UnitToggle(options: List<String>, selected: Int, onSelect: (Int) -> 
 @Composable
 private fun AccountActions(onSignOut: () -> Unit, onDeleteAccount: () -> Unit) {
     Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .background(HeavyLiftsColors.BgElevated, RoundedCornerShape(20.dp))
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(9.dp),
     ) {
-        SettingRow(label = "Sign out", color = HeavyLiftsColors.Fg1, onClick = onSignOut)
-        Hairline()
-        SettingRow(label = "Delete account", color = HeavyLiftsColors.Danger, onClick = onDeleteAccount)
+        SettingRow(
+            label = "Sign out",
+            icon = Icons.AutoMirrored.Filled.ExitToApp,
+            color = HeavyLiftsColors.Fg1,
+            background = HeavyLiftsColors.BgOverlay,
+            onClick = onSignOut,
+        )
+        SettingRow(
+            label = "Delete account",
+            icon = Icons.Outlined.DeleteOutline,
+            color = HeavyLiftsColors.Danger,
+            background = Color(0xFFFFF0F1),
+            onClick = onDeleteAccount,
+        )
     }
 }
 
 @Composable
-private fun SettingRow(label: String, color: Color, onClick: () -> Unit) {
+private fun SettingRow(
+    label: String,
+    icon: ImageVector,
+    color: Color,
+    background: Color,
+    onClick: () -> Unit,
+) {
     Row(
         Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(background)
             .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+            .heightIn(min = 54.dp)
+            .padding(horizontal = 18.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
+        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
         Text(
             text = label,
+            modifier = Modifier.weight(1f),
             color = color,
-            fontFamily = HeavyLiftsType.Display,
+            fontFamily = HeavyLiftsType.Body,
             fontSize = 15.sp,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.Bold,
         )
-        Text(
-            text = "›",
-            color = HeavyLiftsColors.Fg3,
-            fontFamily = HeavyLiftsType.Display,
-            fontSize = 18.sp
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(20.dp),
         )
     }
 }

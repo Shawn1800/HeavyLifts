@@ -6,6 +6,7 @@ import kotlin.time.Instant
 data class UserProfileState(
     val userName: String = "",
     val userNameError: String? = null,
+    val isUserNameAvailable: Boolean = false,
     val age: Int? = null,
     val ageError: String? = null,
     val height: Float? = null,

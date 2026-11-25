@@ -26,3 +26,12 @@ sealed interface ProgressLoadState {
         val latestSession: ProgressSession?,
     ) : ProgressLoadState
 }
+
+internal fun ProgressHistory.chartState(
+    metric: ProgressMetric,
+    range: ProgressRange,
+): ProgressLoadState.Ready = ProgressLoadState.Ready(
+    history = this,
+    chartPoints = chartPoints(metric, range),
+    latestSession = latestSession(range),
+)

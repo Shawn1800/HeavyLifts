@@ -43,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -350,6 +351,41 @@ private fun SummaryPill(text: String) {
             fontWeight = FontWeight.Bold,
             color = HeavyLiftsColors.Navy
         )
+    }
+}
+
+@Composable
+internal fun ExerciseProgressSection(
+    progress: ProgressLoadState,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var metric by rememberSaveable { mutableStateOf(ProgressMetric.TopWeight) }
+    var range by rememberSaveable { mutableStateOf(ProgressRange.Month) }
+
+    Box(modifier.fillMaxWidth()) {
+        when (progress) {
+            ProgressLoadState.Loading -> ProgressLoading()
+            ProgressLoadState.Error -> ProgressMessage(
+                title = stringResource(R.string.progress_load_failed),
+                detail = stringResource(R.string.progress_load_failed_detail),
+                onRetry = onRetry,
+            )
+            ProgressLoadState.NoExercises -> Unit
+            is ProgressLoadState.Ready -> {
+                if (progress.history.heaviestSet == null) {
+                    ProgressMessage(
+                        title = stringResource(R.string.progress_no_lifts),
+                        detail = stringResource(R.string.progress_no_lifts_detail),
+                    )
+                } else {
+                    val chartState = remember(progress.history, metric, range) {
+                        progress.history.chartState(metric, range)
+                    }
+                    ProgressionCard(chartState, metric, range, { metric = it }, { range = it })
+                }
+            }
+        }
     }
 }
 

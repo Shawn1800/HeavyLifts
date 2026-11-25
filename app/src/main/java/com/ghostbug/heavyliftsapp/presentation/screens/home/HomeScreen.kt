@@ -70,19 +70,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ghostbug.heavyLifts.R
-import com.ghostbug.heavyliftsapp.presentation.screens.signup.SignUpEvent
-import com.ghostbug.heavyliftsapp.presentation.screens.signup.SignUpUiEvent
-import com.ghostbug.heavyliftsapp.presentation.screens.signup.SignUpViewModel
 import com.ghostbug.heavyliftsapp.presentation.ui.components.SetBadgeShape
 import com.ghostbug.heavyliftsapp.presentation.ui.components.SetNumberBadge
 import com.ghostbug.heavyliftsapp.presentation.ui.theme.HeavyLiftsColors
 import com.ghostbug.heavyliftsapp.presentation.ui.theme.HeavyLiftsType
 import kotlin.time.Clock
-import kotlinx.coroutines.launch
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -108,41 +103,21 @@ private fun getExerciseInitials(name: String): String {
 @Composable
 fun HomeScreen(
     homeViewModel: HomeViewModel = viewModel(),
-    signUpViewModel: SignUpViewModel = viewModel(),
     onNavigateToExerciseSelection: () -> Unit,
     onNavigateToLogWorkout: (Long) -> Unit,
-    onNavigateToLogIn: () -> Unit
 ) {
     val state by homeViewModel.state.collectAsStateWithLifecycle()
-    var showLogoutDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
         homeViewModel.onEvent(HomeEvent.RefreshWorkouts)
-        launch {
-            signUpViewModel.uiEvent.collect { event ->
-                if (event is SignUpUiEvent.NavigateToSignIn) onNavigateToLogIn()
+        homeViewModel.uiEvent.collect { event ->
+            when (event) {
+                is HomeUiEvent.NavigateToExerciseSelection -> onNavigateToExerciseSelection()
+                is HomeUiEvent.NavigateToLogWorkout -> onNavigateToLogWorkout(event.exerciseId)
+                is HomeUiEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
             }
         }
-        launch {
-            homeViewModel.uiEvent.collect { event ->
-                when (event) {
-                    is HomeUiEvent.NavigateToExerciseSelection -> onNavigateToExerciseSelection()
-                    is HomeUiEvent.NavigateToLogWorkout -> onNavigateToLogWorkout(event.exerciseId)
-                    is HomeUiEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
-                }
-            }
-        }
-    }
-
-    if (showLogoutDialog) {
-        HeavyLogoutDialog(
-            onDismissRequest = { showLogoutDialog = false },
-            onLogoutClick = {
-                showLogoutDialog = false
-                signUpViewModel.onEvent(SignUpEvent.OnNavigateToSignIn)
-            }
-        )
     }
 
     Scaffold(
@@ -153,8 +128,7 @@ fun HomeScreen(
             state = state,
             paddingValues = paddingValues,
             onDateSelected = { date -> homeViewModel.onEvent(HomeEvent.OnDateSelected(date)) },
-            onEvent = { homeViewModel.onEvent(it) },
-            onShowSignOut = { showLogoutDialog = true }
+            onEvent = homeViewModel::onEvent,
         )
     }
 }
@@ -167,7 +141,6 @@ private fun HomeContent(
     paddingValues: PaddingValues,
     onDateSelected: (LocalDate) -> Unit,
     onEvent: (HomeEvent) -> Unit,
-    onShowSignOut: () -> Unit
 ) {
     val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
     val weekCount = 500
@@ -513,7 +486,7 @@ private fun NewLiftActionBar(onClickNewLift: () -> Unit) {
             Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(22.dp))
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "New lift",
+                text = "Add",
                 color = Color.White,
                 fontFamily = HeavyLiftsType.Body,
                 fontSize = 17.sp,
@@ -819,7 +792,7 @@ private fun HeavyEmptyState(canEdit: Boolean) {
             }
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                "No lifts logged yet",
+                "No sets logged yet",
                 color = HeavyLiftsColors.Fg1,
                 fontFamily = HeavyLiftsType.Display,
                 fontSize = 18.sp,
@@ -828,65 +801,10 @@ private fun HeavyEmptyState(canEdit: Boolean) {
             if (canEdit) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    "Tap '+ New lift' to start your workout.",
+                    "Tap '+ Add' to start your workout",
                     color = HeavyLiftsColors.Fg3,
                     fontSize = 14.sp
                 )
-            }
-        }
-    }
-}
-
-// ─── Logout Dialog ────────────────────────────────────────────────────────────
-
-@Composable
-fun HeavyLogoutDialog(onDismissRequest: () -> Unit, onLogoutClick: () -> Unit) {
-    Dialog(onDismissRequest = onDismissRequest) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(HeavyLiftsColors.BgElevated, RoundedCornerShape(20.dp))
-                .padding(24.dp)
-        ) {
-            Text(
-                text = "Sign out",
-                color = HeavyLiftsColors.Fg1,
-                fontWeight = FontWeight.Bold,
-                fontSize = 20.sp
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = "You're about to sign out. Your data will remain intact.",
-                color = HeavyLiftsColors.Fg3,
-                fontSize = 14.sp,
-                lineHeight = 21.sp
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onDismissRequest,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = HeavyLiftsColors.Fg2),
-                    contentPadding = PaddingValues(vertical = 12.dp)
-                ) {
-                    Text("Cancel", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                }
-                Button(
-                    onClick = onLogoutClick,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = HeavyLiftsColors.Accent,
-                        contentColor = HeavyLiftsColors.Fg1
-                    ),
-                    contentPadding = PaddingValues(vertical = 12.dp)
-                ) {
-                    Text("Sign out", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                }
             }
         }
     }

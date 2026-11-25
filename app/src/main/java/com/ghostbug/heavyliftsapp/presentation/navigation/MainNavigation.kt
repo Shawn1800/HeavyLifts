@@ -8,13 +8,17 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -25,10 +29,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.jan.supabase.auth.auth
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
+import com.ghostbug.heavyLifts.R
 import com.ghostbug.heavyliftsapp.di.HeavyLifts
 import com.ghostbug.heavyliftsapp.presentation.screens.profile.ProfileViewModelFactory
 import com.ghostbug.heavyliftsapp.presentation.screens.exercise_selection.ExerciseSelectionScreen
@@ -89,12 +96,13 @@ fun MainNavigation(
             container.workoutRepository,
             container.oneRepMaxRepository,
             container.oneRepMaxUseCase,
-            container.exerciseRepository
+            container.exerciseRepository,
+            container.getExerciseProgress
         )
     )
 
     val signInViewModel: SignInViewModel = viewModel(
-        factory = SignInViewModelFactory(container.authRepository, container.userProfileRepository)
+        factory = SignInViewModelFactory(container.authRepository)
     )
     val signUpViewModel: SignUpViewModel = viewModel(
         factory = SignUpViewModelFactory(container.authRepository, container.userProfileRepository)
@@ -118,37 +126,59 @@ fun MainNavigation(
         Navigator(navigationState)
     }
 
-    if (gate is AuthGate.Loading) {
+    when (gate) {
+        AuthGate.Loading, AuthGate.RestoringSession, AuthGate.ProfileUnavailable -> {
+            Column(
+                modifier = modifier.fillMaxSize().padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                when (gate) {
+                    AuthGate.ProfileUnavailable -> {
+                        Text(stringResource(R.string.auth_profile_unavailable))
+                        Button(onClick = rootViewModel::retryProfile) {
+                            Text(stringResource(R.string.auth_retry))
+                        }
+                    }
+                    AuthGate.RestoringSession -> {
+                        CircularProgressIndicator()
+                        Text(stringResource(R.string.auth_reconnecting))
+                    }
+                    else -> CircularProgressIndicator()
+                }
+            }
+            return
+        }
+        else -> Unit
+    }
+
+    val currentRoute = navigationState.currentRoute
+    val onAuthScreen = currentRoute == Route.SignInScreen || currentRoute == Route.SignUpScreen
+    val onOnboarding = currentRoute == Route.UserProfileScreen1 ||
+            currentRoute == Route.UserProfileScreen2 ||
+            currentRoute == Route.UserProfileScreen3
+    val redirect = when (gate) {
+        AuthGate.SignedOut -> Route.SignInScreen.takeUnless { onAuthScreen }
+        AuthGate.NeedsOnboarding -> Route.UserProfileScreen1.takeUnless { onOnboarding }
+        AuthGate.Ready -> Route.HomeScreen.takeIf { onAuthScreen || onOnboarding }
+        else -> null
+    }
+    var appliedGate by remember { mutableStateOf<AuthGate?>(null) }
+    LaunchedEffect(gate) {
+        redirect?.let { route ->
+            if (route == Route.UserProfileScreen1) userProfileViewModel.reload()
+            navigator.clearAll()
+            navigator.navigate(route)
+        }
+        appliedGate = gate
+    }
+    if (appliedGate != gate && redirect != null) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
         return
     }
 
-    var initialGateApplied by remember { mutableStateOf(false) }
-    LaunchedEffect(gate) {
-        if (initialGateApplied) return@LaunchedEffect
-        val current = navigationState.currentRoute
-        val onAuthScreen = current is Route.SignInScreen || current is Route.SignUpScreen
-        val onOnboarding = current is Route.UserProfileScreen1 ||
-                current is Route.UserProfileScreen2 ||
-                current is Route.UserProfileScreen3
-        when (gate) {
-            AuthGate.SignedOut -> if (!onAuthScreen) {
-                navigator.clearAll()
-                navigator.navigate(Route.SignInScreen)
-            }
-            AuthGate.NeedsOnboarding -> if (!onOnboarding) {
-                navigator.clearAll()
-                navigator.navigate(Route.UserProfileScreen1)
-            }
-            AuthGate.Ready -> { /* HomeScreen is already the start route */ }
-            AuthGate.Loading -> return@LaunchedEffect
-        }
-        initialGateApplied = true
-    }
-
-    val currentRoute = navigationState.currentRoute
     val showBottomNav = currentRoute == navigationState.topLevelRoute
 
     Scaffold(
@@ -175,7 +205,11 @@ fun MainNavigation(
                 .padding(bottomPadding)
                 .consumeWindowInsets(bottomPadding),
 
-            onBack = navigator::goBack,
+            onBack = {
+                if (gate != AuthGate.SignedOut || currentRoute != Route.SignInScreen) {
+                    navigator.goBack()
+                }
+            },
 
             transitionSpec = {
                 slideInHorizontally(initialOffsetX = { it }) togetherWith
@@ -201,12 +235,8 @@ fun MainNavigation(
                                     ?: System.currentTimeMillis()
                                 navigator.navigate(Route.LogWorkoutScreen(exerciseId, date))
                             },
-                            signUpViewModel = signUpViewModel,
                             onNavigateToExerciseSelection = {
                                 navigator.navigate(Route.ExerciseScreen)
-                            },
-                            onNavigateToLogIn = {
-                                navigator.navigate(Route.SignInScreen)
                             }
                         )
                     }
@@ -242,15 +272,6 @@ fun MainNavigation(
                             state = state,
                             onEvent = signInViewModel::onEvent,
                             uiEvent = signInViewModel.uiEvent,
-                            onNavigateToHome = {
-                                navigator.clearAll()
-                                navigator.navigate(Route.HomeScreen)
-                            },
-                            onNavigateToOnboarding = {
-                                userProfileViewModel.reload()
-                                navigator.clearAll()
-                                navigator.navigate(Route.UserProfileScreen1)
-                            },
                             onNavigateToSignUp = {
                                 navigator.navigate(Route.SignUpScreen)
                             }
@@ -297,9 +318,7 @@ fun MainNavigation(
                             onNext = {
                                 navigator.navigate(Route.UserProfileScreen3)
                             },
-                            onBack = {
-                                navigator.navigate(Route.UserProfileScreen1)
-                            }
+                            onBack = navigator::goBack
                         )
 
                     }
@@ -308,13 +327,8 @@ fun MainNavigation(
                     entry<Route.UserProfileScreen3> {
                         UserProfileScreen3(
                             viewModel = userProfileViewModel,
-                            onBack = {
-                                navigator.navigate(Route.UserProfileScreen2)
-                            },
-                            onNext = {
-                                navigator.clearAll()
-                                navigator.navigate(Route.HomeScreen)
-                            }
+                            onBack = navigator::goBack,
+                            onNext = rootViewModel::onProfileCompleted
 
                         )
                     }
@@ -343,7 +357,10 @@ fun MainNavigation(
                         ProgressScreen(progressViewModel = progressViewModel)
                     }
                 }
-            )
+            ).let { entries ->
+                // The Home entry anchors the back stack but should be hidden during sign-in.
+                if (gate == AuthGate.SignedOut) entries.drop(1) else entries
+            }
         )
     }
 }
