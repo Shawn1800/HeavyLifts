@@ -2,6 +2,7 @@ package com.ghostbug.heavyliftsapp.presentation.screens.progress
 
 import android.text.format.DateFormat
 import androidx.annotation.StringRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -62,6 +63,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.ghostbug.heavyLifts.R
 import com.ghostbug.heavyliftsapp.domain.model.ExerciseEntity
 import com.ghostbug.heavyliftsapp.domain.model.ProgressMetric
@@ -547,6 +549,7 @@ private fun ProgressMessage(title: String, detail: String, onRetry: (() -> Unit)
                 modifier = Modifier.size(64.dp).background(HeavyLiftsColors.AccentSoft, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
+
                 Icon(
                     Icons.Default.FitnessCenter,
                     contentDescription = null,
